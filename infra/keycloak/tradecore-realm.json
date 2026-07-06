@@ -1,0 +1,62 @@
+{
+  "realm": "tradecore",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {"name": "TRADER"},
+      {"name": "OPS"},
+      {"name": "ADMIN"}
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "tradecore-api",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "trader1",
+      "firstName": "Trader",
+      "lastName": "One",
+      "email": "trader1@tradecore.local",
+      "emailVerified": true,
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {},
+      "realmRoles": ["TRADER"],
+      "groups": []
+    },
+    {
+      "username": "ops1",
+      "firstName": "Ops",
+      "lastName": "One",
+      "email": "ops1@tradecore.local",
+      "emailVerified": true,
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {},
+      "realmRoles": ["OPS"],
+      "groups": []
+    },
+    {
+      "username": "admin1",
+      "firstName": "Admin",
+      "lastName": "One",
+      "email": "admin1@tradecore.local",
+      "emailVerified": true,
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {},
+      "realmRoles": ["ADMIN"],
+      "groups": []
+    }
+  ]
+}

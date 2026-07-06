@@ -11,7 +11,7 @@ spring:
       jdbc:
         schema-initialization:
           enabled: false   # Flyway owns all schema (Task 6)
-      republish-outstanding-events-on-restart: false   # TODO(Task 6): flip true once Flyway owns the event_publication schema
+      republish-outstanding-events-on-restart: true
 management:
   endpoints:
     web:

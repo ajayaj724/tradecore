@@ -28,6 +28,9 @@ class SecurityConfig {
                         org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**", "/actuator/health")
                         .permitAll()
+                        // local-only compose scrape; lock down before any non-local deploy
+                        .requestMatchers("/actuator/prometheus")
+                        .permitAll()
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakRealmRoles()))

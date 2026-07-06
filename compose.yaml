@@ -22,3 +22,38 @@ services:
     volumes:
       - ./infra/keycloak/tradecore-realm.json:/opt/keycloak/data/import/tradecore-realm.json:ro
     ports: ["127.0.0.1:8081:8080"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.155.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./infra/otel/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports: ["127.0.0.1:4318:4318"]
+
+  tempo:
+    image: grafana/tempo:3.0.2
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./infra/tempo/tempo.yaml:/etc/tempo.yaml:ro
+    # brief's Step 4 verification curls localhost:3200 from the host; loopback-bound
+    # per the same security policy as the other published ports.
+    ports: ["127.0.0.1:3200:3200"]
+
+  loki:
+    image: grafana/loki:3.7.3
+
+  prometheus:
+    image: prom/prometheus:v3.13.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["127.0.0.1:9090:9090"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["127.0.0.1:3000:3000"]

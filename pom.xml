@@ -46,6 +46,22 @@
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
     <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId></dependency>
     <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
+    <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-registry-prometheus</artifactId></dependency>
+    <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-tracing-bridge-otel</artifactId></dependency>
+    <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-exporter-otlp</artifactId></dependency>
+    <!-- Boot 4.1 relocation: the OTel tracing @AutoConfiguration classes (OpenTelemetryTracingAutoConfiguration,
+         OtlpTracingAutoConfiguration) no longer live in spring-boot-actuator-autoconfigure (verified empty via
+         `unzip -l` on the 4.1.0 jar — zero tracing/otlp classes); they moved to this dedicated module, only
+         otherwise pulled in transitively by the new spring-boot-starter-opentelemetry umbrella starter. Declared
+         directly (compile) instead of the umbrella starter to avoid also enabling OTLP *metrics* export
+         (micrometer-registry-otlp), which the starter bundles and this app doesn't want — Prometheus scrape
+         is the metrics path per the brief. -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId></dependency>
+    <!-- spring-modulith-observability (brief coordinate) is a pom-only aggregator with no jar
+         in Modulith 2.1 (verified: repo1.maven.org lists only a .pom for 2.1.0, 404 on the .jar).
+         It was split into -api and -core; -core transitively pulls -api, so it alone is
+         the correct runtime replacement. -->
+    <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-observability-core</artifactId><scope>runtime</scope></dependency>
 
     <!-- test -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>

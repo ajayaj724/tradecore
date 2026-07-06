@@ -116,10 +116,21 @@ public API of a module = its exposed Java API + its published events. Violations
 
 - `/api/v1`, OpenAPI 3.1 via springdoc, Swagger UI enabled.
 - Errors: RFC 9457 Problem Details, always. Documented idempotency and pagination semantics.
-- CI (GitHub Actions), failing the build on: Spotless format, Error Prone static analysis,
-  unit + Testcontainers integration tests, `ApplicationModules.verify()`, JaCoCo coverage
-  gate (80% line coverage, generated code excluded), OWASP dependency check, Trivy scan of the
-  multi-stage non-root image.
+- **Local machine gate** (`mvn verify`, kept fast): Spotless format, Error Prone + NullAway
+  (JSpecify null-safety — matching Spring Framework 7's own annotations), Checkstyle
+  structural rules (method length, cyclomatic complexity), ArchUnit framework-rules suite
+  (constructor injection only, no field `@Autowired`, controllers never touch repositories,
+  package-private by default), unit + Testcontainers integration tests,
+  `ApplicationModules.verify()`, JaCoCo coverage gate (80% line, generated code excluded).
+- **CI additions** (GitHub Actions): CodeQL semantic SAST (free for public repos), Semgrep
+  OSS (`p/java`, `p/spring`, `p/owasp-top-ten`), gitleaks secret scanning, OWASP
+  Dependency-Check, Trivy scan of the multi-stage non-root image, SonarCloud quality gate
+  (cognitive complexity, security hotspots, public badge).
+- **PR/nightly:** PIT mutation testing — enforces assertion strength mechanically; threshold
+  documented once baselined.
+- ADR: SpotBugs/FindSecBugs deliberately excluded — near-total overlap with CodeQL + Semgrep,
+  and bytecode analyzers lag new Java releases; revisit only if CodeQL becomes unavailable.
+- Tool versions pinned and Context7-verified at Phase 1 scaffolding time.
 
 ## 9. Scope
 

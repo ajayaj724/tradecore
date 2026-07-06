@@ -41,6 +41,6 @@ Read the spec before architectural work; it is the source of truth for scope and
 ## Verification
 
 - `mvn spotless:apply` to fix formatting, then `mvn verify` must pass locally — it runs the
-  same gate as CI (format check, Error Prone, unit + Testcontainers ITs, module verification,
-  80% JaCoCo line coverage).
+  same gate as CI (format check, Error Prone, Checkstyle structural rules, unit +
+  Testcontainers ITs, module verification, 80% JaCoCo line coverage).
 - If Docker isn't running, Testcontainers ITs fail — start Docker first, don't skip tests.

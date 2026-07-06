@@ -18,21 +18,27 @@ to place an order and watch it flow to a balanced ledger within 90 seconds of cl
 **Growth path (each a separate design cycle later):** Next.js trading dashboard → AI/MCP layer
 (agent places and analyzes trades through the same API).
 
-## 2. Stack (versions verified 2026-07-06 via Context7)
+## 2. Stack (versions verified 2026-07-06 against repo1.maven.org metadata)
 
 | Layer | Choice | Notes |
 |---|---|---|
 | Language | Java 25 (LTS) | Virtual threads on; records, sealed interfaces, pattern matching used throughout |
-| Framework | Spring Boot 4.0.x | 4.1.0 exists; pinned to 4.0.x because Spring Modulith 2.0 is compiled against Boot 4.0 (ADR) |
-| Modularity | Spring Modulith 2.0.5 | Boundary verification, Event Publication Registry, doc generation |
+| Framework | Spring Boot 4.1.x | 4.1.0 GA 2026-06-25 |
+| Modularity | Spring Modulith 2.1.x | 2.1.0 GA 2026-06-11, tracks Boot 4.1; boundary verification, Event Publication Registry, doc generation |
 | Security | Spring Security OAuth2 resource server + Keycloak (compose) | Real JWTs from day one |
 | Database | PostgreSQL 18 | Single instance, module-owned schemas |
-| Migrations | Flyway 12.4.0 (Boot-managed) | Plain SQL, versioned, roll-forward only |
+| Migrations | Flyway (Boot-BOM-managed version) | Plain SQL, versioned, roll-forward only |
 | Build | Maven | Enterprise-standard; base package `io.github.ajayaj724.tradecore` |
 | Observability | Micrometer + OpenTelemetry → OTel Collector → Prometheus / Tempo / Loki / Grafana | App emits OTLP only |
 | Resilience | Resilience4j, Bucket4j | External boundaries + API edge |
 | Testing | JUnit (Boot-managed), Testcontainers, `@ApplicationModuleTest`, jqwik property tests, Gatling (Phase 3), JMH (engine) | |
 | CI | GitHub Actions | Full quality gate (§8) |
+
+**Version policy (ADR):** always the latest stable GA of the Boot + Modulith pair and every
+other dependency, verified against the official source at upgrade/commit time —
+`repo1.maven.org` maven-metadata.xml or official release notes as ground truth (Context7 and
+search indexes can lag). Milestones/RCs require an ADR. Boot-BOM-managed versions are never
+overridden.
 
 **Explicitly excluded, with adoption triggers (each an ADR):** Kubernetes, Terraform,
 microservices, Kafka-by-default, Liquibase. Infra stays proportionate to the problem.

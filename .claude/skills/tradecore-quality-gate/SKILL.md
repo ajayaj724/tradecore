@@ -3,7 +3,7 @@ name: tradecore-quality-gate
 description: Use before every git commit in the tradecore repo — including "quick" commits, end-of-session wrap-ups, commits where mvn verify is already green, and commits you plan to "let CI check." Also use when tempted to run scoped tests instead of the full gate, to add any skip/quiet flag to a Maven command, or to commit code that works but hasn't been reviewed for quality.
 metadata:
   author: ajayaj724
-  version: "2.0"
+  version: "2.1"
 ---
 
 # tradecore Quality Gate
@@ -40,6 +40,11 @@ costs minutes, so quality comes first):
 - **Domain integrity:** money stays in `BIGINT` minor units end-to-end (weighted averages
   and P&L math are where division sneaks in); state changes write audit records; new
   endpoints carry authorization and Problem Details.
+- **Dependency currency:** any new or changed version pin is verified against the official
+  source *at commit time* — `repo1.maven.org` maven-metadata.xml or official release notes
+  (Context7 and search indexes can lag) — never recalled from memory. Latest stable GA only;
+  milestones/RCs require an ADR. Never pin what the Boot BOM manages; an unmanaged addition
+  carries OWASP/Trivy evidence and a PR justification.
 
 **3.** `mvn spotless:apply` — auto-fix formatting; stage any files it changed.
 
@@ -73,6 +78,7 @@ A flag that hides a failure is a red gate you chose not to see.
 | "The human already reviewed the work" | Review checks intent; the gate checks correctness. Neither replaces the other. |
 | "I ran the scoped tests all session" | Scoped tests cannot catch cross-module breakage — that is precisely what `ApplicationModules.verify()` and the ITs exist for. |
 | "It works — I'll refactor/decompose later" | Later never has a greener window than now: tests green, context loaded, diff small. Extract now. |
+| "It compiles and the smoke test passes, the version is fine" | A stale pin can be green today while carrying known CVEs or a wrong-generation artifact (a Boot-3-line starter on a Boot 4 app). Currency is verified against the registry, not inferred from green. |
 | "Full verify takes too long this late" | tradecore is one Maven module, built to keep `verify` in single-digit minutes. If it's slower, fix the build — file it, don't skip it. |
 
 ## Red Flags — STOP

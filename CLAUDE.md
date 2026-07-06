@@ -36,7 +36,10 @@ Read the spec before architectural work; it is the source of truth for scope and
 - Conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `build:`, `ci:`).
 - Every architectural decision (or reversal) gets an ADR in `docs/adr/` in the same PR.
 - New dependency = justify in the PR description + passes OWASP/Trivy gates. Prefer
-  Boot-managed versions; never pin a version the Boot BOM already manages.
+  Boot-managed versions; never pin a version the Boot BOM already manages. Any explicit
+  version is verified against the official source at commit time (repo1.maven.org
+  maven-metadata.xml / official release notes; Context7 where fresh) — never from memory.
+  Latest stable GA only; milestones/RCs require an ADR.
 
 ## Verification
 

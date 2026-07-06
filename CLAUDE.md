@@ -41,6 +41,17 @@ Read the spec before architectural work; it is the source of truth for scope and
   maven-metadata.xml / official release notes; Context7 where fresh) — never from memory.
   Latest stable GA only; milestones/RCs require an ADR.
 
+## Management scripts (`scripts/`)
+
+Use these instead of retyping raw docker/maven/curl:
+
+- `scripts/up.sh` / `scripts/down.sh [--wipe]` — platform lifecycle (waits for Postgres + Keycloak realm; `--wipe` resets volumes)
+- `scripts/run.sh` — run the app (auto-starts the platform if down)
+- `scripts/token.sh [user] [pw]` — Keycloak token for demo users (default trader1/demo)
+- `scripts/api.sh METHOD PATH [json] [user]` — authenticated API call; auto `Idempotency-Key` on POST, `X-Correlation-Id` always
+- `scripts/gate.sh` — the full machine gate (spotless:apply + verify); the command form of the tradecore-quality-gate skill's steps 3–4
+- `scripts/logs.sh [service]`, `scripts/psql.sh [args]` — compose logs / database shell
+
 ## Verification
 
 - `mvn spotless:apply` to fix formatting, then `mvn verify` must pass locally — it runs the

@@ -1011,7 +1011,7 @@ logging:
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./infra/otel/otel-collector.yaml:/etc/otel/config.yaml:ro
-    ports: ["4318:4318"]
+    ports: ["127.0.0.1:4318:4318"]
 
   tempo:
     image: grafana/tempo:latest
@@ -1026,7 +1026,7 @@ logging:
     image: prom/prometheus:latest
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
+    ports: ["127.0.0.1:9090:9090"]
     extra_hosts: ["host.docker.internal:host-gateway"]
 
   grafana:
@@ -1036,7 +1036,7 @@ logging:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]
 ```
 
 `infra/otel/otel-collector.yaml`:
@@ -1237,7 +1237,7 @@ docker run --rm --network tradecore_default -e SPRING_DATASOURCE_URL=jdbc:postgr
   -e SPRING_DATASOURCE_USERNAME=tradecore -e SPRING_DATASOURCE_PASSWORD=tradecore \
   -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/tradecore \
   -e MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces \
-  -p 8082:8080 tradecore:local &
+  -p 127.0.0.1:8082:8080 tradecore:local &
 sleep 20 && curl -s http://localhost:8082/actuator/health | grep -q UP && echo IMAGE-OK
 ```
 

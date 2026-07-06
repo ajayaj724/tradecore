@@ -8,7 +8,7 @@ import org.springframework.modulith.Modulithic;
 @SpringBootApplication
 public class TradecoreApplication {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TradecoreApplication.class, args);
-  }
+    public static void main(String[] args) {
+        SpringApplication.run(TradecoreApplication.class, args);
+    }
 }

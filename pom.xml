@@ -69,6 +69,79 @@
           <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>3.8.0</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <configuration>
+          <java>
+            <palantirJavaFormat/>
+            <removeUnusedImports/>
+          </java>
+        </configuration>
+        <executions>
+          <execution><goals><goal>check</goal></goals><phase>validate</phase></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>25</release>
+          <compilerArgs>
+            <arg>-XDcompilePolicy=simple</arg>
+            <arg>--should-stop=ifError=FLOW</arg>
+            <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/target/.* -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=io.github.ajayaj724.tradecore</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path><groupId>com.google.errorprone</groupId><artifactId>error_prone_core</artifactId><version>2.50.0</version></path>
+            <path><groupId>com.uber.nullaway</groupId><artifactId>nullaway</artifactId><version>0.13.7</version></path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <configuration>
+          <configLocation>config/checkstyle/checkstyle.xml</configLocation>
+          <failOnViolation>true</failOnViolation>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <dependencies>
+          <dependency><groupId>com.puppycrawl.tools</groupId><artifactId>checkstyle</artifactId><version>13.7.0</version></dependency>
+        </dependencies>
+        <executions>
+          <execution><goals><goal>check</goal></goals><phase>validate</phase></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.15</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <executions>
+          <execution><goals><goal>prepare-agent</goal></goals></execution>
+          <execution>
+            <id>check</id>
+            <goals><goal>check</goal></goals>
+            <configuration>
+              <excludes>
+                <!-- entry point is glue, not logic; see brief Step 3 fallback -->
+                <exclude>**/TradecoreApplication.class</exclude>
+              </excludes>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.80</minimum></limit>
+                  </limits>
+                </rule>
+              </rules>
+              <haltOnFailure>true</haltOnFailure>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

@@ -49,6 +49,10 @@
 
     <!-- test -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    <!-- Boot 4 moved MockMvc test auto-config (@AutoConfigureMockMvc) out of spring-boot-test-autoconfigure
+         into its own technology-specific test starter; version managed by spring-boot-starter-parent BOM.
+         Per the Boot 4.0 migration guide: "spring-boot-starter-webmvc-test" pairs with "spring-boot-starter-webmvc". -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc-test</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-testcontainers</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-junit-jupiter</artifactId><scope>test</scope></dependency>

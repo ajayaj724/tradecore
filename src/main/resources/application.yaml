@@ -12,6 +12,14 @@ spring:
         schema-initialization:
           enabled: false   # Flyway owns all schema (Task 6)
       republish-outstanding-events-on-restart: true
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/tradecore
 management:
   endpoints:
     web:

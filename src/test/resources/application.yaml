@@ -1,0 +1,36 @@
+# Spring Boot resolves the default classpath:/application.yaml location as a single resource, so
+# having this file at all means it REPLACES src/main/resources/application.yaml for tests rather
+# than merging with it (classpath lookup is singular, not additive across classpath roots). This
+# file therefore mirrors the main config, plus one addition: jwk-set-uri makes JwtDecoder
+# construction lazy — otherwise Boot pings the real issuer's /.well-known/openid-configuration at
+# context startup, which would break every @SpringBootTest IT in CI where Keycloak isn't running.
+# Mock-jwt-based tests never hit this URI; tests that exercise the real decoder supply their own
+# JwtDecoder bean.
+spring:
+  application:
+    name: tradecore
+  threads:
+    virtual:
+      enabled: true
+  flyway:
+    enabled: true
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false   # Flyway owns all schema (Task 6)
+      republish-outstanding-events-on-restart: true
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/tradecore
+          jwk-set-uri: http://localhost:9999/unused
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

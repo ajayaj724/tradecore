@@ -27,6 +27,7 @@ to place an order and watch it flow to a balanced ledger within 90 seconds of cl
 | Modularity | Spring Modulith 2.1.x | 2.1.0 GA 2026-06-11, tracks Boot 4.1; boundary verification, Event Publication Registry, doc generation |
 | Security | Spring Security OAuth2 resource server + Keycloak (compose) | Real JWTs from day one |
 | Database | PostgreSQL 18 | Single instance, module-owned schemas |
+| Data access | Spring Data JDBC (no Hibernate/JPA) | Flat aggregates, explicit load/save, no lazy loading or dirty checking on money paths (ADR) |
 | Migrations | Flyway (Boot-BOM-managed version) | Plain SQL, versioned, roll-forward only |
 | Build | Maven | Enterprise-standard; base package `io.github.ajayaj724.tradecore` |
 | Observability | Micrometer + OpenTelemetry → OTel Collector → Prometheus / Tempo / Loki / Grafana | App emits OTLP only |
@@ -90,8 +91,10 @@ public API of a module = its exposed Java API + its published events. Violations
 ## 5. Data & correctness
 
 - Money as `BIGINT` minor units (paise). Never floating point. Quantities as `BIGINT`.
-- Optimistic locking (`@Version`) on mutable aggregates; `SELECT ... FOR UPDATE` where two
-  orders race for the same cash balance.
+- Spring Data JDBC repositories — aggregates load and save explicitly; bespoke SQL through
+  `JdbcClient`. No ORM session, flush timing, or lazy loading between the code and the money.
+- Optimistic locking (`@Version`) on mutable aggregates; pessimistic `@Lock` /
+  `SELECT ... FOR UPDATE` where two orders race for the same cash balance.
 - Client-supplied `Idempotency-Key` on order submission; duplicates return the original order.
 - Immutable audit trail: who/what/when for every state change, written in the same transaction,
   recording the authenticated principal.

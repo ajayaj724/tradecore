@@ -45,12 +45,13 @@ class SecurityConfig {
     }
 
     @SuppressWarnings("unchecked")
-    private static Collection<GrantedAuthority> extractRealmRoles(Jwt jwt) {
+    static Collection<GrantedAuthority> extractRealmRoles(Jwt jwt) {
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
         if (realmAccess == null || !(realmAccess.get("roles") instanceof List<?> roles)) {
             return List.of();
         }
         return roles.stream()
+                .filter(java.util.Objects::nonNull)
                 .map(Object::toString)
                 .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))
                 .toList();

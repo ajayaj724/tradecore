@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: tradecore
+  threads:
+    virtual:
+      enabled: true
+  flyway:
+    enabled: true
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false   # Flyway owns all schema (Task 6)
+      republish-outstanding-events-on-restart: false   # TODO(Task 6): flip true once Flyway owns the event_publication schema
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

@@ -55,8 +55,8 @@ class KeycloakRoleMappingIT {
                 Jwt.Builder builder = Jwt.withTokenValue(token)
                         .header("alg", "none")
                         .subject("trader1")
-                        .issuedAt(Instant.now())
-                        .expiresAt(Instant.now().plusSeconds(60));
+                        .issuedAt(Instant.EPOCH)
+                        .expiresAt(Instant.EPOCH.plusSeconds(60));
                 if ("with-roles".equals(token)) {
                     builder.claim("realm_access", Map.of("roles", List.of("TRADER")));
                 }

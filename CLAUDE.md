@@ -18,6 +18,11 @@ Read the spec before architectural work; it is the source of truth for scope and
   Roll-forward only.
 - **No unauthenticated endpoints** except health/readiness and OpenAPI docs.
 - **Errors are RFC 9457 Problem Details.** No naked exceptions or ad-hoc error JSON.
+- **Deterministic time.** No zero-arg `Instant.now()` / `LocalDateTime.now()` /
+  `System.currentTimeMillis()` anywhere, main or test — inject `java.time.Clock` (single
+  `Clock.systemUTC()` bean in prod config) and use `Clock.fixed(...)` in tests. `now(Clock)`
+  overloads are fine; Awaitility/latch timeouts are synchronization, not time data.
+  Enforced by ArchUnit (`noSystemClock`).
 
 ## Code style
 

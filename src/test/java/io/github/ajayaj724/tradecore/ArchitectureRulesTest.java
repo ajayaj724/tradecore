@@ -22,4 +22,23 @@ class ArchitectureRulesTest {
             .dependOnClassesThat()
             .resideInAPackage("lombok..")
             .because("no Lombok (CLAUDE.md)");
+
+    @ArchTest
+    static final ArchRule noSystemClock = noClasses()
+            .should()
+            .callMethod(java.time.Instant.class, "now")
+            .orShould()
+            .callMethod(java.time.LocalDateTime.class, "now")
+            .orShould()
+            .callMethod(java.time.LocalDate.class, "now")
+            .orShould()
+            .callMethod(java.time.LocalTime.class, "now")
+            .orShould()
+            .callMethod(java.time.OffsetDateTime.class, "now")
+            .orShould()
+            .callMethod(java.time.ZonedDateTime.class, "now")
+            .orShould()
+            .callMethod(System.class, "currentTimeMillis")
+            .because("time comes from an injected java.time.Clock; zero-arg now() breaks"
+                    + " deterministic tests — now(Clock) overloads are allowed (CLAUDE.md)");
 }

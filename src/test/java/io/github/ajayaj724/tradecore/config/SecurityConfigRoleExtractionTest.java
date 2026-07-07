@@ -17,8 +17,8 @@ class SecurityConfigRoleExtractionTest {
         return Jwt.withTokenValue("t")
                 .header("alg", "none")
                 .subject("trader1")
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(60));
+                .issuedAt(Instant.EPOCH)
+                .expiresAt(Instant.EPOCH.plusSeconds(60));
     }
 
     @Test

@@ -138,6 +138,32 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.28.0</version> <!-- verified 2026-07-07 via repo1 maven-metadata <release> -->
+        <configuration>
+          <failOnViolation>true</failOnViolation>
+          <printFailingErrors>true</printFailingErrors>
+          <rulesets>
+            <ruleset>config/pmd/ruleset.xml</ruleset>
+          </rulesets>
+          <minimumTokens>100</minimumTokens>
+        </configuration>
+        <!-- Engine override: plugin 3.28.0 bundles PMD 7.17.0 (verified in its pom's <pmdVersion>);
+             latest engine is 7.26.0 (repo1 <release>, verified 2026-07-07). All four engine artifacts
+             the plugin depends on are overridden together, per the plugin's "Upgrading PMD at Runtime"
+             docs, to avoid a mixed-version PMD classpath. -->
+        <dependencies>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-core</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-java</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-javascript</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-jsp</artifactId><version>7.26.0</version></dependency>
+        </dependencies>
+        <executions>
+          <execution><goals><goal>check</goal><goal>cpd-check</goal></goals></execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>0.8.15</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->

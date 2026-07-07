@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Start the local platform (Postgres, Keycloak, observability when present) and wait until usable.
+# Clears stale non-docker squatters on platform ports first (FORCE=1 to also clear foreign ones).
 source "$(dirname "$0")/_common.sh"
 cd "$(repo_root)"
+
+for p in "${PLATFORM_PORTS[@]}"; do clear_port "$p"; done
 
 note "starting compose services"
 docker compose up -d

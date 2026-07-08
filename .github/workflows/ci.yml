@@ -27,7 +27,7 @@ jobs:
 
   semgrep:
     runs-on: ubuntu-latest
-    container: semgrep/semgrep
+    container: semgrep/semgrep:1.168.0
     steps:
       - uses: actions/checkout@v4
       - run: semgrep scan --config p/java --config p/spring --config p/owasp-top-ten --error
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t tradecore:ci .
-      - uses: aquasecurity/trivy-action@master
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: tradecore:ci
           exit-code: "1"

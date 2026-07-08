@@ -37,7 +37,8 @@ class OrderFillListenerIT {
     void tradeAdvancesBothOrdersToFilled() {
         long sellId = insertAccepted("trader2", Side.SELL);
         long buyId = insertAccepted("trader1", Side.BUY);
-        TradeExecuted trade = new TradeExecuted(UUID.randomUUID(), buyId, sellId, "ACME", 10000L, 5L, Instant.EPOCH);
+        TradeExecuted trade = new TradeExecuted(
+                UUID.randomUUID(), buyId, sellId, "trader1", "trader2", "ACME", 10000L, 5L, Instant.EPOCH);
 
         service.applyTrade(trade);
 
@@ -50,7 +51,8 @@ class OrderFillListenerIT {
     void reapplyingSameTradeDoesNotDoubleCount() {
         long sellId = insertAccepted("trader2", Side.SELL);
         long buyId = insertAccepted("trader1", Side.BUY);
-        TradeExecuted trade = new TradeExecuted(UUID.randomUUID(), buyId, sellId, "ACME", 10000L, 3L, Instant.EPOCH);
+        TradeExecuted trade = new TradeExecuted(
+                UUID.randomUUID(), buyId, sellId, "trader1", "trader2", "ACME", 10000L, 3L, Instant.EPOCH);
 
         service.applyTrade(trade);
         service.applyTrade(trade); // duplicate delivery

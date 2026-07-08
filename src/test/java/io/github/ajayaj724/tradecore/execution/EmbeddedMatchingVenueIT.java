@@ -43,6 +43,8 @@ class EmbeddedMatchingVenueIT {
         assertThat(trades.getFirst().buyOrderId()).isEqualTo(102L);
         assertThat(trades.getFirst().sellOrderId()).isEqualTo(101L);
         assertThat(trades.getFirst().quantity()).isEqualTo(5L);
+        assertThat(trades.getFirst().buyerAccount()).isEqualTo("trader1");
+        assertThat(trades.getFirst().sellerAccount()).isEqualTo("trader1");
     }
 
     @Test

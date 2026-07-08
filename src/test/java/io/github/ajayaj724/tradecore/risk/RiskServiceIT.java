@@ -23,34 +23,37 @@ class RiskServiceIT {
         this.jdbc = jdbc;
     }
 
-    private long cash(String account) {
-        return jdbc.sql("select amount from risk.available_cash where account = :a")
+    private long available(String account) {
+        Long settled = jdbc.sql("select amount from risk.settled_cash where account = :a")
                 .param("a", account)
                 .query(Long.class)
                 .single();
+        Long held = jdbc.sql(
+                        "select coalesce(sum(unit_price * remaining_qty), 0) from risk.cash_hold where account = :a")
+                .param("a", account)
+                .query(Long.class)
+                .single();
+        return settled - held;
     }
 
     @Test
-    void approvesBuyWithinCashAndReserves() {
-        long before = cash("trader1");
-        RiskDecision decision = risk.check("trader1", Side.BUY, "ACME", 100L, 10L); // 1000 paise
+    void approvesBuyWithinCashAndHolds() {
+        long before = available("trader1");
+        RiskDecision decision = risk.check(9001L, "trader1", Side.BUY, "ACME", 100L, 10L); // holds 1000
 
         assertThat(decision).isInstanceOf(RiskDecision.Approved.class);
-        assertThat(cash("trader1")).isEqualTo(before - 1000L);
+        assertThat(available("trader1")).isEqualTo(before - 1000L); // settled unchanged; hold reduces available
     }
 
     @Test
-    void rejectsBuyWhenCashInsufficient() {
-        long before = cash("trader2");
-        RiskDecision decision = risk.check("trader2", Side.BUY, "ACME", 100000000L, 1000L); // 1e11 paise
-
+    void rejectsBuyWhenAvailableInsufficient() {
+        RiskDecision decision = risk.check(9002L, "trader2", Side.BUY, "ACME", 100000000L, 1000L);
         assertThat(decision).isInstanceOf(RiskDecision.Rejected.class);
-        assertThat(cash("trader2")).isEqualTo(before); // untouched
     }
 
     @Test
     void rejectsSellWhenHoldingsInsufficient() {
-        RiskDecision decision = risk.check("trader1", Side.SELL, "ACME", 10000L, 999999L);
+        RiskDecision decision = risk.check(9003L, "trader1", Side.SELL, "ACME", 10000L, 999999L);
         assertThat(decision).isInstanceOf(RiskDecision.Rejected.class);
     }
 }

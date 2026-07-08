@@ -1,6 +1,11 @@
 package io.github.ajayaj724.tradecore.risk;
 
+import io.github.ajayaj724.tradecore.shared.CashPosted;
 import io.github.ajayaj724.tradecore.shared.Side;
+import io.github.ajayaj724.tradecore.shared.TradeExecuted;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,28 +15,43 @@ import org.springframework.transaction.annotation.Transactional;
 public class RiskService {
 
     private final JdbcClient jdbc;
+    private final Clock clock;
 
-    RiskService(JdbcClient jdbc) {
+    RiskService(JdbcClient jdbc, Clock clock) {
         this.jdbc = jdbc;
+        this.clock = clock;
     }
 
     @Transactional
-    public RiskDecision check(String account, Side side, String symbol, long price, long quantity) {
-        return side == Side.BUY ? reserveCash(account, price * quantity) : reserveHoldings(account, symbol, quantity);
+    public RiskDecision check(long orderId, String account, Side side, String symbol, long price, long quantity) {
+        return side == Side.BUY
+                ? reserveCash(orderId, account, price, quantity)
+                : reserveHoldings(account, symbol, quantity);
     }
 
-    private RiskDecision reserveCash(String account, long cost) {
-        Long available = jdbc.sql("select amount from risk.available_cash where account = :a for update")
+    private RiskDecision reserveCash(long orderId, String account, long unitPrice, long quantity) {
+        Long settled = jdbc.sql("select amount from risk.settled_cash where account = :a for update")
                 .param("a", account)
                 .query(Long.class)
                 .optional()
                 .orElse(null);
-        if (available == null || available < cost) {
+        if (settled == null) {
             return new RiskDecision.Rejected("insufficient cash");
         }
-        jdbc.sql("update risk.available_cash set amount = amount - :cost where account = :a")
-                .param("cost", cost)
+        long held = jdbc.sql(
+                        "select coalesce(sum(unit_price * remaining_qty), 0) from risk.cash_hold where account = :a")
                 .param("a", account)
+                .query(Long.class)
+                .single();
+        long cost = unitPrice * quantity;
+        if (settled - held < cost) {
+            return new RiskDecision.Rejected("insufficient cash");
+        }
+        jdbc.sql("insert into risk.cash_hold (order_id, account, unit_price, remaining_qty) values (:o, :a, :u, :q)")
+                .param("o", orderId)
+                .param("a", account)
+                .param("u", unitPrice)
+                .param("q", quantity)
                 .update();
         return new RiskDecision.Approved();
     }
@@ -53,5 +73,49 @@ public class RiskService {
                 .param("s", symbol)
                 .update();
         return new RiskDecision.Approved();
+    }
+
+    /** Read-model update: settled cash is fed by the ledger's signed-delta CashPosted events. */
+    @Transactional
+    public void applyCashPosted(CashPosted event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+        jdbc.sql("update risk.settled_cash set amount = amount + :amt where account = :a")
+                .param("amt", event.amount())
+                .param("a", event.account())
+                .update();
+        markProcessed(event.eventId());
+    }
+
+    /** Release the buyer's hold for the filled quantity; over-reservation refunds into available cash. */
+    @Transactional
+    public void releaseHold(TradeExecuted trade) {
+        if (alreadyProcessed(trade.eventId())) {
+            return;
+        }
+        jdbc.sql("update risk.cash_hold set remaining_qty = remaining_qty - :q where order_id = :o")
+                .param("q", trade.quantity())
+                .param("o", trade.buyOrderId())
+                .update();
+        jdbc.sql("delete from risk.cash_hold where order_id = :o and remaining_qty <= 0")
+                .param("o", trade.buyOrderId())
+                .update();
+        markProcessed(trade.eventId());
+    }
+
+    private boolean alreadyProcessed(UUID eventId) {
+        return jdbc.sql("select count(*) from risk.processed_event where event_id = :e")
+                        .param("e", eventId)
+                        .query(Long.class)
+                        .single()
+                > 0;
+    }
+
+    private void markProcessed(UUID eventId) {
+        jdbc.sql("insert into risk.processed_event (event_id, processed_at) values (:e, :t)")
+                .param("e", eventId)
+                .param("t", OffsetDateTime.now(clock))
+                .update();
     }
 }

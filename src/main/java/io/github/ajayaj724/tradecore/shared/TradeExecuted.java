@@ -7,6 +7,8 @@ public record TradeExecuted(
         UUID eventId,
         long buyOrderId,
         long sellOrderId,
+        String buyerAccount,
+        String sellerAccount,
         String symbol,
         long price,
         long quantity,

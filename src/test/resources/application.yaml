@@ -29,6 +29,9 @@ spring:
         jwt:
           issuer-uri: http://localhost:8081/realms/tradecore
           jwk-set-uri: http://localhost:9999/unused
+tradecore:
+  reconciliation:
+    initial-delay-ms: 3600000
 management:
   endpoints:
     web:

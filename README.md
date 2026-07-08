@@ -88,16 +88,17 @@ mvn test -Dtest=ModularityTests
 
 These are build output, not committed — regenerate them locally, or render the `.puml`
 files with any PlantUML viewer. The target module map (`orders`, `risk`, `execution`,
-`marketdata`, `portfolio`, `ledger`) and the event-driven integration pattern between them
-are documented in the [design spec, §3](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#3-architecture)
-— none of those modules exist in this repository yet.
+`marketdata`, `portfolio`, `ledger`, `reconciliation`) and the event-driven integration
+pattern between them are documented in the [design spec, §3](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#3-architecture)
+— all of those modules exist in this repository now, with `reconciliation` (Phase 2C) a
+read-only fan-in reporting module that depends on the others but is depended on by none.
 
 Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/):
 
 - [0001 — transactional outbox and redelivery](docs/adr/0001-transactional-outbox-and-redelivery.md):
   cross-module events go through the Spring Modulith Event Publication Registry, a
-  Flyway-owned Postgres outbox, proven by an integration test today even though no
-  publishing module exists yet.
+  Flyway-owned Postgres outbox, proven by an integration test and now exercised by the
+  `orders`, `risk`, `execution`, and `portfolio` publishing modules.
 - [0002 — `/actuator/prometheus` scrape exposure](docs/adr/0002-actuator-prometheus-scrape-exposure.md):
   why that one endpoint is unauthenticated locally, and what closes it before any non-local
   deploy.
@@ -124,9 +125,10 @@ to a full local stack:
 - Grafana at http://localhost:3000 (anonymous viewer access, local only), with Tempo/Loki/Prometheus
   provisioned as data sources
 
-Dashboards (order throughput, fill latency, risk rejection rate, event-registry lag) are not
-built yet — there is no traffic to chart until Plan 1B's domain modules exist. Tracked for
-Phase 2.
+Grafana (`:3000`, anonymous viewer) auto-provisions the **tradecore — OMS overview** board from
+`infra/grafana/provisioning/dashboards/`: order throughput, fill-latency p50/p99, risk-rejection
+rate, event-registry lag, reconciliation drift (`tradecore_reconciliation_drift_pairs`, flat at 0
+when consistent), and JVM/virtual-thread health.
 
 ## Quality gate
 
@@ -172,11 +174,11 @@ scope for this commit:
 
 - **Market + cancel orders** — Phase 1B is LIMIT-only with partial fills; market orders and
   cancel are deferred ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md))
-- **`portfolio`, `ledger`, `marketdata`** modules and end-of-day reconciliation (Phase 2)
-- **Grafana dashboards** — data sources are provisioned; the dashboards themselves are Phase 2
 - **OWASP Dependency-Check** and a live/verified gitleaks run — need an NVD API key and a
   publish target respectively; both wire in when this repo is pushed to GitHub
 - **Swagger/OpenAPI UI** — springdoc wiring for the new `/api/v1/orders` endpoints (spec §8)
+- Reconciliation reports the latest run only (no historical drift storage) and does not remediate
+  drift or page on it — alerting on the emitted gauges is a deploy-time concern.
 
 ## Stack
 

@@ -5,7 +5,12 @@ import io.github.ajayaj724.tradecore.risk.RiskService;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
 import io.github.ajayaj724.tradecore.shared.OrderRejected;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,6 +30,9 @@ class OrderService {
     private final JdbcClient jdbc;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final MeterRegistry registry;
+    private final Counter submitted;
+    private final Timer fillLatency;
 
     OrderService(
             OrderRepository orders,
@@ -33,7 +41,8 @@ class OrderService {
             RiskService risk,
             JdbcClient jdbc,
             ApplicationEventPublisher events,
-            Clock clock) {
+            Clock clock,
+            MeterRegistry registry) {
         this.orders = orders;
         this.audit = audit;
         this.instruments = instruments;
@@ -41,6 +50,14 @@ class OrderService {
         this.jdbc = jdbc;
         this.events = events;
         this.clock = clock;
+        this.registry = registry;
+        this.submitted = Counter.builder("tradecore.orders.submitted")
+                .description("orders submitted")
+                .register(registry);
+        this.fillLatency = Timer.builder("tradecore.order.fill.latency")
+                .description("submit to filled duration")
+                .publishPercentileHistogram()
+                .register(registry);
     }
 
     @Transactional
@@ -54,6 +71,7 @@ class OrderService {
         }
         Order created = orders.save(Order.newOrder(account, cmd.symbol(), cmd.side(), cmd.price(), cmd.quantity()));
         record(created, "SUBMITTED", principal);
+        submitted.increment();
         rememberKey(cmd.idempotencyKey(), Objects.requireNonNull(created.id()));
         RiskDecision decision = risk.check(
                 Objects.requireNonNull(created.id()), account, cmd.side(), cmd.symbol(), cmd.price(), cmd.quantity());
@@ -91,6 +109,7 @@ class OrderService {
                 rejected.quantity(),
                 reason,
                 clock.instant()));
+        registry.counter("tradecore.risk.rejections", "reason", reason).increment();
         return rejected;
     }
 
@@ -121,8 +140,8 @@ class OrderService {
         if (tradeAlreadyApplied(trade.eventId())) {
             return;
         }
-        applyToOrder(trade.buyOrderId(), trade.quantity());
-        applyToOrder(trade.sellOrderId(), trade.quantity());
+        applyToOrder(trade.buyOrderId(), trade.quantity(), trade.occurredAt());
+        applyToOrder(trade.sellOrderId(), trade.quantity(), trade.occurredAt());
         jdbc.sql("insert into orders.applied_trade (event_id, order_id, applied_at) values (:e, :o, :t)")
                 .param("e", trade.eventId())
                 .param("o", trade.buyOrderId())
@@ -130,10 +149,25 @@ class OrderService {
                 .update();
     }
 
-    private void applyToOrder(long orderId, long quantity) {
+    private void applyToOrder(long orderId, long quantity, Instant filledAt) {
         Order order = orders.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
         Order filled = orders.save(order.withFill(quantity));
         record(filled, filled.status().name(), "system");
+        if (filled.status() == OrderStatus.FILLED) {
+            recordFillLatency(orderId, filledAt);
+        }
+    }
+
+    private void recordFillLatency(long orderId, Instant filledAt) {
+        OffsetDateTime submittedAt = jdbc.sql("select occurred_at from orders.audit where order_id = :o"
+                        + " and action = 'SUBMITTED' order by id limit 1")
+                .param("o", orderId)
+                .query(OffsetDateTime.class)
+                .optional()
+                .orElse(null);
+        if (submittedAt != null) {
+            fillLatency.record(Duration.between(submittedAt.toInstant(), filledAt));
+        }
     }
 
     private boolean tradeAlreadyApplied(UUID eventId) {

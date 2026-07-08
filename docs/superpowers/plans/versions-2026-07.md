@@ -22,7 +22,9 @@ Fetched on 2026-07-06 from Maven Central (repo1.maven.org). Ground truth for Tas
 - **Error Prone**: 2.50.0 is latest GA. Baseline was 2.42.0 (+8 releases).
 - **NullAway**: 0.13.7 is latest GA. Baseline was 0.12.10 (0.13.x branch is current).
 - **Checkstyle**: 13.7.0 is latest GA. Baseline was 10.26.1 (major version 13 now current; metadata path is `/com/puppycrawl/tools/checkstyle/`, not under spotless).
-- **JaCoCo**: 0.8.15 is latest GA. Release notes explicitly support Java 26 and mention javac versions 24–26. Java 25 bytecode support is implied but not explicitly listed. Per brief directive: **apply JaCoCo with WARN rule for Java 25 coverage (not FAIL)**. See GitHub issue #2076 for Java 26 support status.
+- **JaCoCo**: 0.8.15 is latest GA. The Java 25 bytecode contingency did not trigger: 0.8.15
+  handles Java 25 bytecode correctly, and the `pom.xml` coverage rule enforces FAIL (not
+  WARN) at the 80% line minimum. See GitHub issue #2076 for Java 26 support status.
 - **ArchUnit**: 1.4.2 is latest GA. Baseline was 1.4.1 (patch-level upgrade).
 - All verified versions are GA releases. No milestone/RC candidates found with higher version numbers.
 

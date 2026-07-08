@@ -16,7 +16,10 @@ Read the spec before architectural work; it is the source of truth for scope and
   Engine changes require property tests (jqwik) for the affected invariant.
 - **All schema changes via Flyway.** Never edit an applied migration; add a new one.
   Roll-forward only.
-- **No unauthenticated endpoints** except health/readiness and OpenAPI docs.
+- **No unauthenticated endpoints** except health/readiness and OpenAPI docs. Exception:
+  `/actuator/prometheus` is unauthenticated locally only — see
+  [ADR-0002](docs/adr/0002-actuator-prometheus-scrape-exposure.md); must be closed before
+  any non-local deploy.
 - **Errors are RFC 9457 Problem Details.** No naked exceptions or ad-hoc error JSON.
 - **Deterministic time.** No zero-arg `Instant.now()` / `LocalDateTime.now()` /
   `System.currentTimeMillis()` anywhere, main or test — inject `java.time.Clock` (single

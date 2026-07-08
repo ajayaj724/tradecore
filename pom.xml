@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.0</version> <!-- Task 1 verified value -->
+    <relativePath/>
+  </parent>
+
+  <groupId>io.github.ajayaj724</groupId>
+  <artifactId>tradecore</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <name>tradecore</name>
+  <description>Enterprise brokerage OMS — modular monolith showcase</description>
+
+  <properties>
+    <java.version>25</java.version>
+    <spring-modulith.version>2.1.0</spring-modulith.version> <!-- Task 1 verified -->
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.modulith</groupId>
+        <artifactId>spring-modulith-bom</artifactId>
+        <version>${spring-modulith.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-resource-server</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jdbc</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+    <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-starter-core</artifactId></dependency>
+    <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-starter-jdbc</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
+    <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId></dependency>
+    <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
+    <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-registry-prometheus</artifactId></dependency>
+    <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-tracing-bridge-otel</artifactId></dependency>
+    <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-exporter-otlp</artifactId></dependency>
+    <!-- Boot 4.1 relocation: the OTel tracing @AutoConfiguration classes (OpenTelemetryTracingAutoConfiguration,
+         OtlpTracingAutoConfiguration) no longer live in spring-boot-actuator-autoconfigure (verified empty via
+         `unzip -l` on the 4.1.0 jar — zero tracing/otlp classes); they moved to this dedicated module, only
+         otherwise pulled in transitively by the new spring-boot-starter-opentelemetry umbrella starter. Declared
+         directly (compile) instead of the umbrella starter to avoid also enabling OTLP *metrics* export
+         (micrometer-registry-otlp), which the starter bundles and this app doesn't want — Prometheus scrape
+         is the metrics path per the brief. -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId></dependency>
+    <!-- spring-modulith-observability (brief coordinate) is a pom-only aggregator with no jar
+         in Modulith 2.1 (verified: repo1.maven.org lists only a .pom for 2.1.0, 404 on the .jar).
+         It was split into -api and -core; -core transitively pulls -api, so it alone is
+         the correct runtime replacement. -->
+    <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-observability-core</artifactId><scope>runtime</scope></dependency>
+
+    <!-- test -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    <!-- Boot 4 moved MockMvc test auto-config (@AutoConfigureMockMvc) out of spring-boot-test-autoconfigure
+         into its own technology-specific test starter; version managed by spring-boot-starter-parent BOM.
+         Per the Boot 4.0 migration guide: "spring-boot-starter-webmvc-test" pairs with "spring-boot-starter-webmvc". -->
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-testcontainers</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-junit-jupiter</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-postgresql</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-starter-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>com.tngtech.archunit</groupId><artifactId>archunit-junit5</artifactId><version>1.4.2</version><scope>test</scope></dependency>
+    <dependency><groupId>org.awaitility</groupId><artifactId>awaitility</artifactId><scope>test</scope></dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>3.8.0</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <configuration>
+          <java>
+            <palantirJavaFormat/>
+            <removeUnusedImports/>
+          </java>
+        </configuration>
+        <executions>
+          <execution><goals><goal>check</goal></goals><phase>validate</phase></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>25</release>
+          <compilerArgs>
+            <arg>-XDcompilePolicy=simple</arg>
+            <arg>--should-stop=ifError=FLOW</arg>
+            <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/target/.* -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=io.github.ajayaj724.tradecore</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path><groupId>com.google.errorprone</groupId><artifactId>error_prone_core</artifactId><version>2.50.0</version></path>
+            <path><groupId>com.uber.nullaway</groupId><artifactId>nullaway</artifactId><version>0.13.7</version></path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <configuration>
+          <configLocation>config/checkstyle/checkstyle.xml</configLocation>
+          <failOnViolation>true</failOnViolation>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <dependencies>
+          <dependency><groupId>com.puppycrawl.tools</groupId><artifactId>checkstyle</artifactId><version>13.7.0</version></dependency>
+        </dependencies>
+        <executions>
+          <execution><goals><goal>check</goal></goals><phase>validate</phase></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.28.0</version> <!-- verified 2026-07-07 via repo1 maven-metadata <release> -->
+        <configuration>
+          <failOnViolation>true</failOnViolation>
+          <printFailingErrors>true</printFailingErrors>
+          <rulesets>
+            <ruleset>config/pmd/ruleset.xml</ruleset>
+          </rulesets>
+          <minimumTokens>100</minimumTokens>
+        </configuration>
+        <!-- Engine override: plugin 3.28.0 bundles PMD 7.17.0 (verified in its pom's <pmdVersion>);
+             latest engine is 7.26.0 (repo1 <release>, verified 2026-07-07). All four engine artifacts
+             the plugin depends on are overridden together, per the plugin's "Upgrading PMD at Runtime"
+             docs, to avoid a mixed-version PMD classpath. -->
+        <dependencies>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-core</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-java</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-javascript</artifactId><version>7.26.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-jsp</artifactId><version>7.26.0</version></dependency>
+        </dependencies>
+        <executions>
+          <execution><goals><goal>check</goal><goal>cpd-check</goal></goals></execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.15</version> <!-- verified 2026-07-06, docs/superpowers/plans/versions-2026-07.md -->
+        <executions>
+          <execution><goals><goal>prepare-agent</goal></goals></execution>
+          <execution>
+            <id>check</id>
+            <goals><goal>check</goal></goals>
+            <configuration>
+              <excludes>
+                <!-- entry point is glue, not logic; see brief Step 3 fallback -->
+                <exclude>**/TradecoreApplication.class</exclude>
+              </excludes>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.80</minimum></limit>
+                  </limits>
+                </rule>
+              </rules>
+              <haltOnFailure>true</haltOnFailure>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

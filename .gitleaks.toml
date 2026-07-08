@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+paths = ['''infra/keycloak/tradecore-realm\.json''']
+description = "Local demo realm — intentional throwaway credentials, never used outside docker compose"

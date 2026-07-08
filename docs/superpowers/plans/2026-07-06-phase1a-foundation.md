@@ -1011,7 +1011,7 @@ logging:
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./infra/otel/otel-collector.yaml:/etc/otel/config.yaml:ro
-    ports: ["4318:4318"]
+    ports: ["127.0.0.1:4318:4318"]
 
   tempo:
     image: grafana/tempo:latest
@@ -1026,7 +1026,7 @@ logging:
     image: prom/prometheus:latest
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
+    ports: ["127.0.0.1:9090:9090"]
     extra_hosts: ["host.docker.internal:host-gateway"]
 
   grafana:
@@ -1036,7 +1036,7 @@ logging:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]
 ```
 
 `infra/otel/otel-collector.yaml`:
@@ -1139,7 +1139,63 @@ mvn spotless:apply && mvn verify && git add -A && git commit -m "feat: OTel trac
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Produces: non-root multi-stage image `tradecore:local`; CI = build+gate, CodeQL, Semgrep, gitleaks, Trivy. (OWASP Dependency-Check and SonarCloud join when the repo goes public — they need tokens/registration; tracked in README TODO section as explicit future work, not silence.)
+- Produces: PMD CognitiveComplexity + CPD duplication in `mvn verify`; non-root multi-stage image `tradecore:local`; CI = build+gate, CodeQL, Semgrep, gitleaks, Trivy. (OWASP Dependency-Check joins when the repo goes public — needs an NVD API key; tracked in README TODO. SonarCloud dropped by ADR — PMD/CPD cover its mechanical checks locally.)
+
+- [ ] **Step 0: Add PMD 7 + CPD to the machine gate**
+
+Verify current GA versions first (same pattern as Task 1):
+
+```bash
+for gav in org/apache/maven/plugins/maven-pmd-plugin net/sourceforge/pmd/pmd-java ; do
+  echo "== $gav"; curl -s "https://repo1.maven.org/maven2/$gav/maven-metadata.xml" | grep -E '<release>'
+done
+```
+
+Baselines if fetch fails: maven-pmd-plugin `3.27.0`, PMD engine `7.14.0`.
+
+Add to `pom.xml` `<build><plugins>` (engine version override keeps PMD 7 current regardless of the plugin's bundled default):
+
+```xml
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.27.0</version> <!-- verified value -->
+        <configuration>
+          <failOnViolation>true</failOnViolation>
+          <printFailingErrors>true</printFailingErrors>
+          <rulesets>
+            <ruleset>config/pmd/ruleset.xml</ruleset>
+          </rulesets>
+          <minimumTokens>100</minimumTokens>
+        </configuration>
+        <dependencies>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-core</artifactId><version>7.14.0</version></dependency>
+          <dependency><groupId>net.sourceforge.pmd</groupId><artifactId>pmd-java</artifactId><version>7.14.0</version></dependency>
+        </dependencies>
+        <executions>
+          <execution><goals><goal>check</goal><goal>cpd-check</goal></goals></execution>
+        </executions>
+      </plugin>
+```
+
+Create `config/pmd/ruleset.xml`:
+
+```xml
+<?xml version="1.0"?>
+<ruleset name="tradecore"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>tradecore judgment-complexity rules — SonarCloud replacement (ADR)</description>
+  <rule ref="category/java/design.xml/CognitiveComplexity">
+    <properties>
+      <property name="reportLevel" value="15"/>
+    </properties>
+  </rule>
+</ruleset>
+```
+
+Run `mvn verify` → BUILD SUCCESS (skeleton code is trivially under threshold; the rule exists to catch Plan 1B logic).
 
 - [ ] **Step 1: Create `Dockerfile`**
 
@@ -1181,7 +1237,7 @@ docker run --rm --network tradecore_default -e SPRING_DATASOURCE_URL=jdbc:postgr
   -e SPRING_DATASOURCE_USERNAME=tradecore -e SPRING_DATASOURCE_PASSWORD=tradecore \
   -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/tradecore \
   -e MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces \
-  -p 8082:8080 tradecore:local &
+  -p 127.0.0.1:8082:8080 tradecore:local &
 sleep 20 && curl -s http://localhost:8082/actuator/health | grep -q UP && echo IMAGE-OK
 ```
 
@@ -1271,7 +1327,7 @@ mvn spotless:apply && mvn verify && git add -A && git commit -m "ci: Dockerfile 
 **Interfaces:**
 - Produces: the repo's front door; must reflect only what exists at this commit (no aspirational features).
 
-- [ ] **Step 1: Write `README.md`** — sections, all describing current reality: what tradecore is (2 sentences + spec link); Quick start (`docker compose up -d`, `mvn spring-boot:run`, the Task 7 token curl, health/401/404 demo); Architecture (embed `docs/architecture/` Modulith-generated diagram reference + link to design spec); Quality (gate description, how to run, CI jobs list, explicit TODO list: Dependency-Check + SonarCloud on publish, dashboards in Phase 2, domain modules in Plan 1B); demo credentials warning (local only).
+- [ ] **Step 1: Write `README.md`** — sections, all describing current reality: what tradecore is (2 sentences + spec link); Quick start (`docker compose up -d`, `mvn spring-boot:run`, the Task 7 token curl, health/401/404 demo); Architecture (embed `docs/architecture/` Modulith-generated diagram reference + link to design spec); Quality (gate description, how to run, CI jobs list, explicit TODO list: Dependency-Check on publish (NVD API key), dashboards in Phase 2, domain modules in Plan 1B); demo credentials warning (local only).
 
 - [ ] **Step 2: Full gate + platform verification from clean state**
 

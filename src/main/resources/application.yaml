@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: tradecore
+  threads:
+    virtual:
+      enabled: true
+  # local compose-platform defaults — env vars override in any non-local deployment (Spring property precedence)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tradecore
+    username: tradecore
+    password: tradecore
+  flyway:
+    enabled: true
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false   # Flyway owns all schema (Task 6)
+      republish-outstanding-events-on-restart: true
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/tradecore
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  # management.otlp.tracing.endpoint (Boot <4.0 name) is deprecated (error-level) in Boot 4.1;
+  # verified against spring-boot-micrometer-tracing-opentelemetry-4.1.0's
+  # spring-configuration-metadata.json — replacement is opentelemetry.tracing.export.otlp.endpoint.
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+logging:
+  structured:
+    format:
+      console: ecs

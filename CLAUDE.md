@@ -16,8 +16,16 @@ Read the spec before architectural work; it is the source of truth for scope and
   Engine changes require property tests (jqwik) for the affected invariant.
 - **All schema changes via Flyway.** Never edit an applied migration; add a new one.
   Roll-forward only.
-- **No unauthenticated endpoints** except health/readiness and OpenAPI docs.
+- **No unauthenticated endpoints** except health/readiness and OpenAPI docs. Exception:
+  `/actuator/prometheus` is unauthenticated locally only — see
+  [ADR-0002](docs/adr/0002-actuator-prometheus-scrape-exposure.md); must be closed before
+  any non-local deploy.
 - **Errors are RFC 9457 Problem Details.** No naked exceptions or ad-hoc error JSON.
+- **Deterministic time.** No zero-arg `Instant.now()` / `LocalDateTime.now()` /
+  `System.currentTimeMillis()` anywhere, main or test — inject `java.time.Clock` (single
+  `Clock.systemUTC()` bean in prod config) and use `Clock.fixed(...)` in tests. `now(Clock)`
+  overloads are fine; Awaitility/latch timeouts are synchronization, not time data.
+  Enforced by ArchUnit (`noSystemClock`).
 
 ## Code style
 
@@ -40,6 +48,17 @@ Read the spec before architectural work; it is the source of truth for scope and
   version is verified against the official source at commit time (repo1.maven.org
   maven-metadata.xml / official release notes; Context7 where fresh) — never from memory.
   Latest stable GA only; milestones/RCs require an ADR.
+
+## Management scripts (`scripts/`)
+
+Use these instead of retyping raw docker/maven/curl:
+
+- `scripts/up.sh` / `scripts/down.sh [--wipe]` — platform lifecycle (waits for Postgres + Keycloak realm; `--wipe` resets volumes)
+- `scripts/run.sh` — run the app (auto-starts the platform if down)
+- `scripts/token.sh [user] [pw]` — Keycloak token for demo users (default trader1/demo)
+- `scripts/api.sh METHOD PATH [json] [user]` — authenticated API call; auto `Idempotency-Key` on POST, `X-Correlation-Id` always
+- `scripts/gate.sh` — the full machine gate (spotless:apply + verify); the command form of the tradecore-quality-gate skill's steps 3–4
+- `scripts/logs.sh [service]`, `scripts/psql.sh [args]` — compose logs / database shell
 
 ## Verification
 

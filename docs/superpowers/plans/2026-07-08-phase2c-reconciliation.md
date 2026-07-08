@@ -163,7 +163,9 @@ git commit -m "feat: risk settled-state read getters for reconciliation"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/test/java/io/github/ajayaj724/tradecore/reconciliation/ReconciliationServiceIT.java`:
+Create `src/test/java/io/github/ajayaj724/tradecore/reconciliation/ReconciliationServiceIT.java`.
+
+**Test isolation (critical):** the full gate reuses one Testcontainers Postgres across all bare `@SpringBootTest @Import(TestcontainersConfig.class)` IT classes (Spring context caching), and sibling module ITs commit mutations to the seeded `trader1`/`ACME` rows — some perturb `risk.settled_cash` without a matching `ledger` posting, which is genuine drift. So this IT does **not** assert over `trader1`. It reconciles a **dedicated `recon-acct`/`RCT` universe** (configured via `@TestPropertySource`) that no other test touches, and seeds exactly the rows it asserts on. Seeding tests are `@Transactional` so their inserts roll back (Spring binds the connection to the thread, so `reconcile()`'s reads through the services see the uncommitted rows and rollback cleans them up).
 
 ```java
 package io.github.ajayaj724.tradecore.reconciliation;
@@ -172,15 +174,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Import(TestcontainersConfig.class)
+@TestPropertySource(
+        properties = {
+            "tradecore.reconciliation.accounts=recon-acct",
+            "tradecore.reconciliation.symbols=RCT",
+            "tradecore.reconciliation.initial-delay-ms=3600000"
+        })
 class ReconciliationServiceIT {
 
     private final ReconciliationService reconciliation;
@@ -198,26 +208,43 @@ class ReconciliationServiceIT {
         return registry.get("tradecore.reconciliation.drift.pairs").gauge().value();
     }
 
+    private double equity(String account) {
+        return registry.get("tradecore.account.equity").tag("account", account).gauge().value();
+    }
+
     @Test
-    void consistentSystemReportsZeroDrift() {
+    void emptyUniverseReportsZeroDriftAndZeroEquity() {
+        // recon-acct/RCT have no ledger/risk/portfolio/price rows -> every read is 0, nothing drifts
         reconciliation.reconcile();
         assertThat(driftPairs()).isZero();
+        assertThat(equity("recon-acct")).isZero();
     }
 
     @Test
-    void computesPerAccountEquity() {
-        reconciliation.reconcile();
-        // 100_000_000 cash + 1000 ACME * 10_000 last price = 110_000_000 paise
-        double equity = registry.get("tradecore.account.equity").tag("account", "trader1").gauge().value();
-        assertThat(equity).isEqualTo(110_000_000d);
-    }
-
-    @Test
-    @Transactional // perturbation rolls back so other classes see pristine seed
-    void forcedDivergenceRaisesDrift() {
-        jdbc.sql("update risk.settled_cash set amount = amount + 1 where account = :a")
-                .param("a", "trader1")
+    @Transactional
+    void consistentStateReportsZeroDriftAndComputesEquity() {
+        // ledger cash == risk settled cash (500); portfolio qty == risk settled holdings (3); price 100
+        jdbc.sql("insert into ledger.posting (txn_id, account, amount, kind) values (:t, 'recon-acct', 500, 'OPENING')")
+                .param("t", UUID.randomUUID())
                 .update();
+        jdbc.sql("insert into risk.settled_cash (account, amount) values ('recon-acct', 500)").update();
+        jdbc.sql("insert into portfolio.position (account, symbol, total_qty) values ('recon-acct', 'RCT', 3)")
+                .update();
+        jdbc.sql("insert into risk.settled_holdings (account, symbol, qty) values ('recon-acct', 'RCT', 3)")
+                .update();
+        jdbc.sql("insert into marketdata.last_price (symbol, price) values ('RCT', 100)").update();
+
+        reconciliation.reconcile();
+
+        assertThat(driftPairs()).isZero();
+        assertThat(equity("recon-acct")).isEqualTo(800d); // 500 cash + 3 * 100 price
+    }
+
+    @Test
+    @Transactional
+    void forcedDivergenceRaisesDrift() {
+        // settled cash with no matching ledger posting -> cash drift != 0 for (recon-acct, RCT)
+        jdbc.sql("insert into risk.settled_cash (account, amount) values ('recon-acct', 1)").update();
         reconciliation.reconcile();
         assertThat(driftPairs()).isGreaterThanOrEqualTo(1d);
     }

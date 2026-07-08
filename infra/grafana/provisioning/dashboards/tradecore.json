@@ -1,0 +1,66 @@
+{
+  "uid": "tradecore-overview",
+  "title": "tradecore — OMS overview",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Order throughput (orders/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(tradecore_orders_submitted_total[1m]))", "legendFormat": "submitted" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Fill latency (p50 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(tradecore_order_fill_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.99, sum(rate(tradecore_order_fill_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Risk rejection rate (by reason)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(tradecore_risk_rejections_total[5m])) by (reason)", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Event-registry lag (incomplete publications)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "tradecore_events_registry_lag", "legendFormat": "incomplete" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Reconciliation drift (should flatline at 0)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "refId": "A", "expr": "tradecore_reconciliation_drift_pairs", "legendFormat": "drifted pairs" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM / virtual threads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "refId": "A", "expr": "sum(jvm_memory_used_bytes)", "legendFormat": "heap+nonheap used" },
+        { "refId": "B", "expr": "jvm_threads_live_threads", "legendFormat": "live threads" }
+      ]
+    }
+  ]
+}

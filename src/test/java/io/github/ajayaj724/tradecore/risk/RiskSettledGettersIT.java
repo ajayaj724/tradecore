@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Import(TestcontainersConfig.class)
@@ -22,40 +23,25 @@ class RiskSettledGettersIT {
         this.jdbc = jdbc;
     }
 
-    // trader1/ACME are shared fixtures mutated by other ITs (e.g. LedgerServiceIT) sharing this
-    // Spring test context; assert against the live row rather than the pristine V7/V10 seed value.
-    private long rawSettledCash(String account) {
-        return jdbc.sql("select amount from risk.settled_cash where account = :a")
-                .param("a", account)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
-    }
-
-    private long rawSettledHoldings(String account, String symbol) {
-        return jdbc.sql("select qty from risk.settled_holdings where account = :a and symbol = :s")
-                .param("a", account)
-                .param("s", symbol)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
+    @Test
+    @Transactional
+    void settledCashReturnsSeededAmount() {
+        jdbc.sql("insert into risk.settled_cash (account, amount) values ('getters-test', 42)")
+                .update();
+        assertThat(risk.settledCash("getters-test")).isEqualTo(42L);
     }
 
     @Test
-    void exposesSeededSettledCash() {
-        assertThat(risk.settledCash("trader1")).isPositive().isEqualTo(rawSettledCash("trader1"));
-    }
-
-    @Test
-    void exposesSeededSettledHoldings() {
-        assertThat(risk.settledHoldings("trader1", "ACME"))
-                .isPositive()
-                .isEqualTo(rawSettledHoldings("trader1", "ACME"));
+    @Transactional
+    void settledHoldingsReturnsSeededQty() {
+        jdbc.sql("insert into risk.settled_holdings (account, symbol, qty) values ('getters-test', 'ZZZZ', 7)")
+                .update();
+        assertThat(risk.settledHoldings("getters-test", "ZZZZ")).isEqualTo(7L);
     }
 
     @Test
     void returnsZeroForUnknownAccountOrSymbol() {
-        assertThat(risk.settledCash("nobody")).isEqualTo(0L);
-        assertThat(risk.settledHoldings("trader1", "NOSUCH")).isEqualTo(0L);
+        assertThat(risk.settledCash("nobody")).isZero();
+        assertThat(risk.settledHoldings("getters-test", "NOSUCH")).isZero();
     }
 }

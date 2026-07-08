@@ -135,6 +135,7 @@ public class RiskService {
         markProcessed(event.eventId());
     }
 
+    /** Settled cash for the account in paise (0 if the account has no settled row). */
     @Transactional(readOnly = true)
     public long settledCash(String account) {
         return jdbc.sql("select amount from risk.settled_cash where account = :a")
@@ -144,6 +145,7 @@ public class RiskService {
                 .orElse(0L);
     }
 
+    /** Settled holdings quantity for the account and symbol (0 if none). */
     @Transactional(readOnly = true)
     public long settledHoldings(String account, String symbol) {
         return jdbc.sql("select qty from risk.settled_holdings where account = :a and symbol = :s")

@@ -2221,10 +2221,10 @@ Prove CPD bites on real domain code, add a real demo trader to the realm, write 
 
 - [ ] **Step 1: Prove CPD is live (RED then GREEN)**
 
-Temporarily duplicate a ≥100-token block — copy the whole body of `reserveCash` into a new `reserveCashCopy` method in `RiskService` — and run PMD/CPD:
+Temporarily duplicate a ≥100-token block and run PMD/CPD. Note `RiskService.reserveCash` alone is only ~82 tokens (under `minimumTokens=100`, so it does NOT trip CPD) — copy the denser `OrderBook.submit` matching loop into a `submitCopy` method instead:
 
-Run: `mvn -q pmd:cpd-check`
-Expected: FAIL — CPD reports a duplication in `RiskService.java`. This proves the gate detects copy-paste against real domain code (deferred finding). Then **delete** `reserveCashCopy` and re-run:
+Run: `mvn pmd:cpd-check`
+Expected: FAIL — "CPD Failure: Found N lines of duplicated code" in `OrderBook.java`. This proves the gate detects copy-paste against real domain code (deferred finding). Then **delete** `submitCopy` and re-run:
 
 Run: `mvn -q pmd:cpd-check`
 Expected: PASS. Do not commit the duplicated method — this step only proves the detector works.

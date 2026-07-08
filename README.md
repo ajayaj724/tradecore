@@ -11,13 +11,14 @@ in [`docs/superpowers/specs/2026-07-06-brokerage-oms-design.md`](docs/superpower
 
 ## Demo credentials — local only
 
-The compose stack ships a pre-imported Keycloak realm with three throwaway users. These
+The compose stack ships a pre-imported Keycloak realm with four throwaway users. These
 exist **only** in the local `docker compose` stack, are never used outside it, and are
 intentionally allowlisted in [`.gitleaks.toml`](.gitleaks.toml) as non-secrets.
 
 | User | Password | Role |
 |---|---|---|
 | `trader1` | `demo` | `TRADER` |
+| `trader2` | `demo` | `TRADER` |
 | `ops1` | `demo` | `OPS` |
 | `admin1` | `demo` | `ADMIN` |
 
@@ -42,21 +43,26 @@ curl -s http://localhost:8080/actuator/health
 # {"groups":["liveness","readiness"],"status":"UP"}
 
 # unauthenticated request to a protected path — RFC 9457 problem+json, 401
-curl -si http://localhost:8080/api/v1/x
+curl -si http://localhost:8080/api/v1/orders/1
 # HTTP/1.1 401
-# Content-Type: application/problem+json;charset=ISO-8859-1
-# {"detail":"Authentication required","instance":"/api/v1/x","status":401,"title":"Unauthorized"}
+# Content-Type: application/problem+json;charset=UTF-8
+# {"detail":"Authentication required","instance":"/api/v1/orders/1","status":401,"title":"Unauthorized"}
 
-# same path, with a bearer token — 404 (no domain endpoints exist yet in Phase 1A)
-TOKEN=$(scripts/token.sh)
-curl -si http://localhost:8080/api/v1/x -H "Authorization: Bearer $TOKEN"
-# HTTP/1.1 404
-# {"detail":"No static resource api/v1/x.","instance":"/api/v1/x","status":404,"title":"Not Found"}
+# one order fills end-to-end: trader2 rests a sell, trader1 crosses it with a buy
+scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"SELL","price":10000,"quantity":5}' trader2
+scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"BUY","price":10000,"quantity":5}'  trader1
+# each returns 201 with the order in status ACCEPTED and an "id"
+
+# read the buy back by its id — status FILLED, filledQty 5, matched through the embedded engine
+scripts/api.sh GET /api/v1/orders/<buyId> trader1
+# {"id":<buyId>,"symbol":"ACME","side":"BUY","price":10000,"quantity":5,"filledQty":5,"status":"FILLED"}
 ```
 
-That 404 is expected and correct: the security chain, JWT validation, and Problem Details
-error mapping are all real; there is simply no `/api/v1/x` (or any domain) endpoint behind
-them yet.
+Prices and quantities are **minor units** (paise / whole shares) end-to-end — no floating
+point touches money. A pre-trade risk rejection is a `201` with `status: REJECTED` (a domain
+outcome, not a fault); unknown symbols and other faults are RFC 9457 Problem Details. One
+OpenTelemetry trace spans the whole path — `POST` → risk → `OrderAccepted` → engine →
+`TradeExecuted` → the order reaching FILLED — viewable in Grafana at http://localhost:3000.
 
 Other scripts: `scripts/down.sh [--wipe]` stops the platform (`--wipe` also drops volumes),
 `scripts/api.sh METHOD PATH [json] [user]` makes an authenticated call with an
@@ -66,10 +72,10 @@ opens a database shell.
 
 ## Architecture
 
-Single deployable, Spring Modulith-verified. At this commit the codebase is one application
-module (`io.github.ajayaj724.tradecore`, plus its `config` package for security and error
-handling) — there are no domain modules yet. `ApplicationModules.verify()` runs as a test
-(`ModularityTests`) on every build, so as domain modules are added in Plan 1B, boundary
+Single deployable, Spring Modulith-verified. Phase 1B added the first domain modules —
+`orders`, `risk`, `execution` (with a framework-free matching engine), and a `shared`
+contracts module — alongside the `config` package for security and error handling.
+`ApplicationModules.verify()` runs as a test (`ModularityTests`) on every build, so boundary
 violations fail the gate rather than getting caught in review.
 
 The same test class generates Modulith's architecture documentation (C4 component diagram,
@@ -152,8 +158,8 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
 - **Live gitleaks verification** — the CI job is configured (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml))
   but hasn't run against a real push yet; this repo has no remote configured as of this commit
 - **PIT mutation testing** — planned as a PR/nightly job once a baseline threshold is set
-- **Swagger/OpenAPI UI** — lands with the first real endpoint (`/api/v1/...`) in Plan 1B; there is
-  nothing to document yet
+- **Swagger/OpenAPI UI** — `/api/v1/orders` exists now, but springdoc/Swagger UI wiring is still
+  pending (spec §8); the endpoints are exercised via `scripts/api.sh` today
 - **Loki log shipping** — Loki is provisioned as a Grafana data source and runs in compose, but
   no shipper (e.g. Promtail) forwards app logs into it yet; app logs are structured JSON to
   stdout only today. Tracked for Phase 2
@@ -161,14 +167,16 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
 
 ## What's not here yet
 
-Phase 1A is infrastructure only. Explicitly out of scope for this commit:
+Phase 1B delivered the walking-skeleton slice (one order fills end-to-end). Explicitly out of
+scope for this commit:
 
-- **Domain modules** — `orders`, `risk`, `execution`, the matching engine (Plan 1B)
+- **Market + cancel orders** — Phase 1B is LIMIT-only with partial fills; market orders and
+  cancel are deferred ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md))
 - **`portfolio`, `ledger`, `marketdata`** modules and end-of-day reconciliation (Phase 2)
 - **Grafana dashboards** — data sources are provisioned; the dashboards themselves are Phase 2
 - **OWASP Dependency-Check** and a live/verified gitleaks run — need an NVD API key and a
   publish target respectively; both wire in when this repo is pushed to GitHub
-- **Swagger/OpenAPI UI** — no API exists yet to document
+- **Swagger/OpenAPI UI** — springdoc wiring for the new `/api/v1/orders` endpoints (spec §8)
 
 ## Stack
 

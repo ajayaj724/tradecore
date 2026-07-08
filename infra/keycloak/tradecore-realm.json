@@ -33,6 +33,19 @@
       "groups": []
     },
     {
+      "username": "trader2",
+      "firstName": "Trader",
+      "lastName": "Two",
+      "email": "trader2@tradecore.local",
+      "emailVerified": true,
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {},
+      "realmRoles": ["TRADER"],
+      "groups": []
+    },
+    {
       "username": "ops1",
       "firstName": "Ops",
       "lastName": "One",

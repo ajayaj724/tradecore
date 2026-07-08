@@ -112,7 +112,9 @@ to a full local stack:
 
 - Traces: OTel Collector → Tempo (query at http://localhost:3200)
 - Metrics: Prometheus scrapes `/actuator/prometheus` (http://localhost:9090)
-- Logs: Loki (structured JSON, correlation id via `X-Correlation-Id`)
+- Correlation ids: every request gets an `X-Correlation-Id` — accepted if the caller sends
+  one, generated otherwise — echoed on the response and available in every log line for
+  that request via MDC (`CorrelationIdFilter`)
 - Grafana at http://localhost:3000 (anonymous viewer access, local only), with Tempo/Loki/Prometheus
   provisioned as data sources
 
@@ -152,6 +154,10 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
 - **PIT mutation testing** — planned as a PR/nightly job once a baseline threshold is set
 - **Swagger/OpenAPI UI** — lands with the first real endpoint (`/api/v1/...`) in Plan 1B; there is
   nothing to document yet
+- **Loki log shipping** — Loki is provisioned as a Grafana data source and runs in compose, but
+  no shipper (e.g. Promtail) forwards app logs into it yet; app logs are structured JSON to
+  stdout only today. Tracked for Phase 2
+- **CONTRIBUTING.md, SECURITY.md, CI badge** — spec §11 items; not created in Phase 1A
 
 ## What's not here yet
 

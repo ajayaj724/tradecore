@@ -135,6 +135,25 @@ public class RiskService {
         markProcessed(event.eventId());
     }
 
+    @Transactional(readOnly = true)
+    public long settledCash(String account) {
+        return jdbc.sql("select amount from risk.settled_cash where account = :a")
+                .param("a", account)
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+    }
+
+    @Transactional(readOnly = true)
+    public long settledHoldings(String account, String symbol) {
+        return jdbc.sql("select qty from risk.settled_holdings where account = :a and symbol = :s")
+                .param("a", account)
+                .param("s", symbol)
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+    }
+
     private boolean alreadyProcessed(UUID eventId) {
         return jdbc.sql("select count(*) from risk.processed_event where event_id = :e")
                         .param("e", eventId)

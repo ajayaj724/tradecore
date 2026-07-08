@@ -20,7 +20,7 @@ class ProblemDetailsAuthHandlersTest {
         handlers.handle(request, response, new AccessDeniedException("denied"));
 
         assertThat(response.getStatus()).isEqualTo(403);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
+        assertThat(response.getContentType()).isEqualTo("application/problem+json;charset=UTF-8");
         assertThat(response.getContentAsString()).contains("Access denied");
     }
 }

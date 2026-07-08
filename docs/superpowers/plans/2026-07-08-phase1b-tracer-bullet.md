@@ -145,7 +145,7 @@ Expected: `prometheusScrapeIsPublic` PASS. `authenticatedUnknownPathIs404Problem
 
 - [ ] **Step 7: Add the three ArchUnit rules**
 
-Append to `ArchitectureRulesTest.java` (imports: add `com.tngtech.archunit.base.DescribedPredicate`, `com.tngtech.archunit.core.domain.JavaClass`; reuse existing `noClasses`):
+Append to `ArchitectureRulesTest.java` (no new imports — all predicates are string-based; reuse existing `noClasses`). ArchUnit 1.x **fails** a `that()`-restricted rule that matches zero classes (`failOnEmptyShould` defaults true), so each rule carries `.allowEmptyShould(true)` until its subject types exist (engine → Task 2; controllers/repos → Task 5):
 
 ```java
     @ArchTest
@@ -154,7 +154,8 @@ Append to `ArchitectureRulesTest.java` (imports: add `com.tngtech.archunit.base.
             .areAssignableTo("org.springframework.data.repository.Repository")
             .should()
             .bePublic()
-            .because("repositories are module internals, never public API (package-private by default, CLAUDE.md)");
+            .because("repositories are module internals, never public API (package-private by default, CLAUDE.md)")
+            .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule controllersDoNotTouchRepositories = noClasses()
@@ -163,7 +164,8 @@ Append to `ArchitectureRulesTest.java` (imports: add `com.tngtech.archunit.base.
             .should()
             .dependOnClassesThat()
             .areAssignableTo("org.springframework.data.repository.Repository")
-            .because("controllers go through services, never repositories (CLAUDE.md)");
+            .because("controllers go through services, never repositories (CLAUDE.md)")
+            .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule engineIsFrameworkFree = noClasses()
@@ -172,13 +174,14 @@ Append to `ArchitectureRulesTest.java` (imports: add `com.tngtech.archunit.base.
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("org.springframework..", "jakarta..")
-            .because("the matching engine stays framework-free (CLAUDE.md)");
+            .because("the matching engine stays framework-free (CLAUDE.md)")
+            .allowEmptyShould(true);
 ```
 
 - [ ] **Step 8: Run the arch rules — verify green (vacuously)**
 
 Run: `mvn -q -Dtest=ArchitectureRulesTest test`
-Expected: PASS — no repositories, controllers, or engine classes exist yet, so all three hold vacuously.
+Expected: PASS — no repositories, controllers, or engine classes exist yet; `.allowEmptyShould(true)` lets the zero-subject rules pass (ArchUnit 1.x otherwise fails an empty `should`). They begin enforcing once Tasks 2/5 add the subjects.
 
 - [ ] **Step 9: Add the Clock bean (write test first)**
 

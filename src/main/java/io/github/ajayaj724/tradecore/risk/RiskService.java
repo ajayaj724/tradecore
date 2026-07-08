@@ -1,6 +1,7 @@
 package io.github.ajayaj724.tradecore.risk;
 
 import io.github.ajayaj724.tradecore.shared.CashPosted;
+import io.github.ajayaj724.tradecore.shared.HoldingsPosted;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
@@ -26,7 +27,7 @@ public class RiskService {
     public RiskDecision check(long orderId, String account, Side side, String symbol, long price, long quantity) {
         return side == Side.BUY
                 ? reserveCash(orderId, account, price, quantity)
-                : reserveHoldings(account, symbol, quantity);
+                : reserveHoldings(orderId, account, symbol, quantity);
     }
 
     private RiskDecision reserveCash(long orderId, String account, long unitPrice, long quantity) {
@@ -56,21 +57,30 @@ public class RiskService {
         return new RiskDecision.Approved();
     }
 
-    private RiskDecision reserveHoldings(String account, String symbol, long quantity) {
-        Long available = jdbc.sql(
-                        "select quantity from risk.available_holdings where account = :a and symbol = :s for update")
+    private RiskDecision reserveHoldings(long orderId, String account, String symbol, long quantity) {
+        Long settled = jdbc.sql("select qty from risk.settled_holdings where account = :a and symbol = :s for update")
                 .param("a", account)
                 .param("s", symbol)
                 .query(Long.class)
                 .optional()
                 .orElse(null);
-        if (available == null || available < quantity) {
+        if (settled == null) {
             return new RiskDecision.Rejected("insufficient holdings");
         }
-        jdbc.sql("update risk.available_holdings set quantity = quantity - :q where account = :a and symbol = :s")
-                .param("q", quantity)
+        long held = jdbc.sql("select coalesce(sum(remaining_qty), 0) from risk.holdings_hold"
+                        + " where account = :a and symbol = :s")
                 .param("a", account)
                 .param("s", symbol)
+                .query(Long.class)
+                .single();
+        if (settled - held < quantity) {
+            return new RiskDecision.Rejected("insufficient holdings");
+        }
+        jdbc.sql("insert into risk.holdings_hold (order_id, account, symbol, remaining_qty) values (:o, :a, :s, :q)")
+                .param("o", orderId)
+                .param("a", account)
+                .param("s", symbol)
+                .param("q", quantity)
                 .update();
         return new RiskDecision.Approved();
     }
@@ -101,7 +111,28 @@ public class RiskService {
         jdbc.sql("delete from risk.cash_hold where order_id = :o and remaining_qty <= 0")
                 .param("o", trade.buyOrderId())
                 .update();
+        jdbc.sql("update risk.holdings_hold set remaining_qty = remaining_qty - :q where order_id = :o")
+                .param("q", trade.quantity())
+                .param("o", trade.sellOrderId())
+                .update();
+        jdbc.sql("delete from risk.holdings_hold where order_id = :o and remaining_qty <= 0")
+                .param("o", trade.sellOrderId())
+                .update();
         markProcessed(trade.eventId());
+    }
+
+    /** Read-model update: settled holdings fed by portfolio's signed-delta HoldingsPosted events. */
+    @Transactional
+    public void applyHoldingsPosted(HoldingsPosted event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+        jdbc.sql("update risk.settled_holdings set qty = qty + :q where account = :a and symbol = :s")
+                .param("q", event.qty())
+                .param("a", event.account())
+                .param("s", event.symbol())
+                .update();
+        markProcessed(event.eventId());
     }
 
     private boolean alreadyProcessed(UUID eventId) {

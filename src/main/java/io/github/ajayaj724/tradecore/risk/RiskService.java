@@ -1,6 +1,11 @@
 package io.github.ajayaj724.tradecore.risk;
 
+import io.github.ajayaj724.tradecore.shared.CashPosted;
 import io.github.ajayaj724.tradecore.shared.Side;
+import io.github.ajayaj724.tradecore.shared.TradeExecuted;
+import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class RiskService {
 
     private final JdbcClient jdbc;
+    private final Clock clock;
 
-    RiskService(JdbcClient jdbc) {
+    RiskService(JdbcClient jdbc, Clock clock) {
         this.jdbc = jdbc;
+        this.clock = clock;
     }
 
     @Transactional
@@ -66,5 +73,49 @@ public class RiskService {
                 .param("s", symbol)
                 .update();
         return new RiskDecision.Approved();
+    }
+
+    /** Read-model update: settled cash is fed by the ledger's signed-delta CashPosted events. */
+    @Transactional
+    public void applyCashPosted(CashPosted event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+        jdbc.sql("update risk.settled_cash set amount = amount + :amt where account = :a")
+                .param("amt", event.amount())
+                .param("a", event.account())
+                .update();
+        markProcessed(event.eventId());
+    }
+
+    /** Release the buyer's hold for the filled quantity; over-reservation refunds into available cash. */
+    @Transactional
+    public void releaseHold(TradeExecuted trade) {
+        if (alreadyProcessed(trade.eventId())) {
+            return;
+        }
+        jdbc.sql("update risk.cash_hold set remaining_qty = remaining_qty - :q where order_id = :o")
+                .param("q", trade.quantity())
+                .param("o", trade.buyOrderId())
+                .update();
+        jdbc.sql("delete from risk.cash_hold where order_id = :o and remaining_qty <= 0")
+                .param("o", trade.buyOrderId())
+                .update();
+        markProcessed(trade.eventId());
+    }
+
+    private boolean alreadyProcessed(UUID eventId) {
+        return jdbc.sql("select count(*) from risk.processed_event where event_id = :e")
+                        .param("e", eventId)
+                        .query(Long.class)
+                        .single()
+                > 0;
+    }
+
+    private void markProcessed(UUID eventId) {
+        jdbc.sql("insert into risk.processed_event (event_id, processed_at) values (:e, :t)")
+                .param("e", eventId)
+                .param("t", OffsetDateTime.now(clock))
+                .update();
     }
 }

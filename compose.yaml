@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: tradecore
       POSTGRES_PASSWORD: tradecore
     ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tradecore"]
       interval: 5s
@@ -57,3 +59,6 @@ services:
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
     ports: ["127.0.0.1:3000:3000"]
+
+volumes:
+  pgdata:

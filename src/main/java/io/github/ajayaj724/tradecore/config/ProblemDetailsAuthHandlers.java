@@ -41,6 +41,7 @@ class ProblemDetailsAuthHandlers implements AuthenticationEntryPoint, AccessDeni
         problem.setInstance(URI.create(request.getRequestURI()));
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
         mapper.writeValue(response.getWriter(), problem);
     }
 }

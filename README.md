@@ -124,9 +124,10 @@ to a full local stack:
 - Grafana at http://localhost:3000 (anonymous viewer access, local only), with Tempo/Loki/Prometheus
   provisioned as data sources
 
-Dashboards (order throughput, fill latency, risk rejection rate, event-registry lag) are not
-built yet — there is no traffic to chart until Plan 1B's domain modules exist. Tracked for
-Phase 2.
+Grafana (`:3000`, anonymous viewer) auto-provisions the **tradecore — OMS overview** board from
+`infra/grafana/provisioning/dashboards/`: order throughput, fill-latency p50/p99, risk-rejection
+rate, event-registry lag, reconciliation drift (`tradecore_reconciliation_drift_pairs`, flat at 0
+when consistent), and JVM/virtual-thread health.
 
 ## Quality gate
 
@@ -172,11 +173,11 @@ scope for this commit:
 
 - **Market + cancel orders** — Phase 1B is LIMIT-only with partial fills; market orders and
   cancel are deferred ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md))
-- **`portfolio`, `ledger`, `marketdata`** modules and end-of-day reconciliation (Phase 2)
-- **Grafana dashboards** — data sources are provisioned; the dashboards themselves are Phase 2
 - **OWASP Dependency-Check** and a live/verified gitleaks run — need an NVD API key and a
   publish target respectively; both wire in when this repo is pushed to GitHub
 - **Swagger/OpenAPI UI** — springdoc wiring for the new `/api/v1/orders` endpoints (spec §8)
+- Reconciliation reports the latest run only (no historical drift storage) and does not remediate
+  drift or page on it — alerting on the emitted gauges is a deploy-time concern.
 
 ## Stack
 

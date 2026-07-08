@@ -55,7 +55,8 @@ class OrderService {
         Order created = orders.save(Order.newOrder(account, cmd.symbol(), cmd.side(), cmd.price(), cmd.quantity()));
         record(created, "SUBMITTED", principal);
         rememberKey(cmd.idempotencyKey(), Objects.requireNonNull(created.id()));
-        RiskDecision decision = risk.check(account, cmd.side(), cmd.symbol(), cmd.price(), cmd.quantity());
+        RiskDecision decision = risk.check(
+                Objects.requireNonNull(created.id()), account, cmd.side(), cmd.symbol(), cmd.price(), cmd.quantity());
         return switch (decision) {
             case RiskDecision.Rejected r -> reject(created, r.reason(), principal);
             case RiskDecision.Approved ignored -> accept(created, principal);

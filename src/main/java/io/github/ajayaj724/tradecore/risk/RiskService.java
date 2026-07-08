@@ -16,22 +16,35 @@ public class RiskService {
     }
 
     @Transactional
-    public RiskDecision check(String account, Side side, String symbol, long price, long quantity) {
-        return side == Side.BUY ? reserveCash(account, price * quantity) : reserveHoldings(account, symbol, quantity);
+    public RiskDecision check(long orderId, String account, Side side, String symbol, long price, long quantity) {
+        return side == Side.BUY
+                ? reserveCash(orderId, account, price, quantity)
+                : reserveHoldings(account, symbol, quantity);
     }
 
-    private RiskDecision reserveCash(String account, long cost) {
-        Long available = jdbc.sql("select amount from risk.available_cash where account = :a for update")
+    private RiskDecision reserveCash(long orderId, String account, long unitPrice, long quantity) {
+        Long settled = jdbc.sql("select amount from risk.settled_cash where account = :a for update")
                 .param("a", account)
                 .query(Long.class)
                 .optional()
                 .orElse(null);
-        if (available == null || available < cost) {
+        if (settled == null) {
             return new RiskDecision.Rejected("insufficient cash");
         }
-        jdbc.sql("update risk.available_cash set amount = amount - :cost where account = :a")
-                .param("cost", cost)
+        long held = jdbc.sql(
+                        "select coalesce(sum(unit_price * remaining_qty), 0) from risk.cash_hold where account = :a")
                 .param("a", account)
+                .query(Long.class)
+                .single();
+        long cost = unitPrice * quantity;
+        if (settled - held < cost) {
+            return new RiskDecision.Rejected("insufficient cash");
+        }
+        jdbc.sql("insert into risk.cash_hold (order_id, account, unit_price, remaining_qty) values (:o, :a, :u, :q)")
+                .param("o", orderId)
+                .param("a", account)
+                .param("u", unitPrice)
+                .param("q", quantity)
                 .update();
         return new RiskDecision.Approved();
     }

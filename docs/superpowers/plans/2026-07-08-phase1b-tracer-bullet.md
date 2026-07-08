@@ -19,7 +19,7 @@ Every task's requirements implicitly include these (verbatim from the spec + CLA
 - **All schema via Flyway, roll-forward only.** Never edit an applied migration; add a new one. Migrations are added in ascending version order across tasks (V2 risk, V3 orders, V4 execution).
 - **No unauthenticated endpoints** except health/readiness, OpenAPI docs, and `/actuator/prometheus` (local-only, already permitted).
 - **Errors are RFC 9457 Problem Details.** No naked exceptions or ad-hoc error JSON.
-- **Deterministic time.** No zero-arg `Instant.now()` / `System.currentTimeMillis()` anywhere. Inject `java.time.Clock`; use `clock.instant()` in main and `Clock.fixed(...)` in tests. Enforced by the `noSystemClock` ArchUnit rule.
+- **Deterministic time.** No zero-arg `Instant.now()` / `System.currentTimeMillis()` anywhere. Inject `java.time.Clock`; use `clock.instant()` in main and `Clock.fixed(...)` in tests. Enforced by the `noSystemClock` ArchUnit rule. **pgjdbc caveat:** raw `JdbcClient.param(...)` cannot infer a SQL type for `java.time.Instant` — pass `OffsetDateTime.now(clock)` (a `now(Clock)` overload, arch-rule-allowed) for `timestamptz` params. Spring Data JDBC repositories convert `Instant` fine; only bespoke `JdbcClient` SQL needs `OffsetDateTime`.
 - **Java 25 idioms:** records for values/events, sealed interfaces for closed hierarchies, pattern matching. No Lombok. Constructor injection only; no field `@Autowired`. Domain events are immutable past-tense records.
 - **Gate limits (mechanical):** Checkstyle method length ≤ 40 lines, cyclomatic complexity ≤ 10, line length ≤ 120; PMD cognitive complexity ≤ 15; JaCoCo ≥ 80% line (BUNDLE); Spotless palantir-java-format. `mvn verify` must be green before every commit.
 - **Base package:** `io.github.ajayaj724.tradecore`. NullAway checks the whole base package — nullable fields use `org.jspecify.annotations.Nullable`.
@@ -1465,7 +1465,7 @@ class OrderService {
         jdbc.sql("insert into orders.idempotency (key, order_id, created_at) values (:k, :o, :t)")
                 .param("k", key)
                 .param("o", orderId)
-                .param("t", clock.instant())
+                .param("t", OffsetDateTime.now(clock))
                 .update();
     }
 
@@ -1792,7 +1792,7 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
     private void markProcessed(UUID eventId) {
         jdbc.sql("insert into execution.processed_event (event_id, processed_at) values (:id, :t)")
                 .param("id", eventId)
-                .param("t", clock.instant())
+                .param("t", OffsetDateTime.now(clock))
                 .update();
     }
 }
@@ -1934,7 +1934,7 @@ Add these methods to `OrderService` (dedup on the trade event id via `orders.app
         jdbc.sql("insert into orders.applied_trade (event_id, order_id, applied_at) values (:e, :o, :t)")
                 .param("e", trade.eventId())
                 .param("o", trade.buyOrderId())
-                .param("t", clock.instant())
+                .param("t", OffsetDateTime.now(clock))
                 .update();
     }
 

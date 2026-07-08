@@ -88,16 +88,17 @@ mvn test -Dtest=ModularityTests
 
 These are build output, not committed — regenerate them locally, or render the `.puml`
 files with any PlantUML viewer. The target module map (`orders`, `risk`, `execution`,
-`marketdata`, `portfolio`, `ledger`) and the event-driven integration pattern between them
-are documented in the [design spec, §3](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#3-architecture)
-— none of those modules exist in this repository yet.
+`marketdata`, `portfolio`, `ledger`, `reconciliation`) and the event-driven integration
+pattern between them are documented in the [design spec, §3](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#3-architecture)
+— all of those modules exist in this repository now, with `reconciliation` (Phase 2C) a
+read-only fan-in reporting module that depends on the others but is depended on by none.
 
 Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/):
 
 - [0001 — transactional outbox and redelivery](docs/adr/0001-transactional-outbox-and-redelivery.md):
   cross-module events go through the Spring Modulith Event Publication Registry, a
-  Flyway-owned Postgres outbox, proven by an integration test today even though no
-  publishing module exists yet.
+  Flyway-owned Postgres outbox, proven by an integration test and now exercised by the
+  `orders`, `risk`, `execution`, and `portfolio` publishing modules.
 - [0002 — `/actuator/prometheus` scrape exposure](docs/adr/0002-actuator-prometheus-scrape-exposure.md):
   why that one endpoint is unauthenticated locally, and what closes it before any non-local
   deploy.

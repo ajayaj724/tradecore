@@ -4,6 +4,7 @@ import io.github.ajayaj724.tradecore.risk.RiskDecision;
 import io.github.ajayaj724.tradecore.risk.RiskService;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
 import io.github.ajayaj724.tradecore.shared.OrderRejected;
+import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -112,5 +113,42 @@ class OrderService {
     private void record(Order order, String action, String principal) {
         audit.save(new AuditRecord(
                 null, Objects.requireNonNull(order.id()), order.account(), action, principal, clock.instant(), null));
+    }
+
+    @Transactional
+    void applyTrade(TradeExecuted trade) {
+        if (tradeAlreadyApplied(trade.eventId())) {
+            return;
+        }
+        applyToOrder(trade.buyOrderId(), trade.quantity());
+        applyToOrder(trade.sellOrderId(), trade.quantity());
+        jdbc.sql("insert into orders.applied_trade (event_id, order_id, applied_at) values (:e, :o, :t)")
+                .param("e", trade.eventId())
+                .param("o", trade.buyOrderId())
+                .param("t", OffsetDateTime.now(clock))
+                .update();
+    }
+
+    private void applyToOrder(long orderId, long quantity) {
+        Order order = orders.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        Order filled = orders.save(order.withFill(quantity));
+        record(filled, filled.status().name(), "system");
+    }
+
+    private boolean tradeAlreadyApplied(UUID eventId) {
+        return jdbc.sql("select count(*) from orders.applied_trade where event_id = :e")
+                        .param("e", eventId)
+                        .query(Long.class)
+                        .single()
+                > 0;
+    }
+
+    @Transactional(readOnly = true)
+    Order findForViewer(long id, String account, boolean isOps) {
+        Order order = orders.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        if (!isOps && !order.account().equals(account)) {
+            throw new OrderNotFoundException(id); // do not leak existence to non-owners
+        }
+        return order;
     }
 }

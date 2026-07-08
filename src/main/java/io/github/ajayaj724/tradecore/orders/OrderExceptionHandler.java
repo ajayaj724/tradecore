@@ -14,4 +14,11 @@ class OrderExceptionHandler {
         problem.setTitle("Unknown symbol");
         return problem;
     }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    ProblemDetail handleNotFound(OrderNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Order not found");
+        return problem;
+    }
 }

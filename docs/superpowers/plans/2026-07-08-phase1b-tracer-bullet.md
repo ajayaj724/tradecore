@@ -1825,6 +1825,8 @@ git commit -m "feat: execution adapter — consume OrderAccepted, match, publish
 
 Consume `TradeExecuted` (idempotent, dedup via `orders.applied_trade`), advance the order to PARTIALLY_FILLED/FILLED under optimistic locking, audit. Add `GET /api/v1/orders/{id}` with service-layer ownership. Ships a duplicate-delivery test.
 
+> **Execution deviations (applied):** `OrderFillListenerIT` inserts ACCEPTED orders **directly via `OrderRepository`** (not `service.submit`) — submitting would publish `OrderAccepted` and drag in the shared in-memory engine, contaminating the assertion; direct insertion isolates `applyTrade`. And `OrderOwnershipIT` is created **here in Task 7** (not Task 8) because the GET endpoint it covers is added here — every task must hold 80% coverage on its own.
+
 **Files:**
 - Create: `src/main/java/io/github/ajayaj724/tradecore/orders/OrderFillListener.java`
 - Create: `src/main/java/io/github/ajayaj724/tradecore/orders/OrderNotFoundException.java`
@@ -2009,7 +2011,7 @@ Add to `OrderController` (compute `isOps` from authorities; username from the JW
             @PathVariable long id) {
         String account = jwt.getClaimAsString("preferred_username");
         boolean isOps = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_OPS"));
+                .anyMatch(a -> "ROLE_OPS".equals(a.getAuthority())); // literal-first: getAuthority() is @Nullable
         return ResponseEntity.ok(OrderResponse.from(service.findForViewer(id, account, isOps)));
     }
 ```

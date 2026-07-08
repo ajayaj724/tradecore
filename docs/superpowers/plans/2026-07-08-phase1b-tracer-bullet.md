@@ -590,6 +590,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.jqwik.api.Arbitraries;
 import net.jqwik.api.Arbitrary;
 import net.jqwik.api.Combinators;
@@ -634,8 +635,9 @@ class MatchingEnginePropertyTest {
         for (Input in : inputs) {
             byId.put(in.orderId(), in);
             for (Fill f : engine.submit("ACME", in.orderId(), in.side(), in.price(), in.quantity())) {
-                assertThat(f.price()).isLessThanOrEqualTo(byId.get(f.buyOrderId()).price());
-                assertThat(f.price()).isGreaterThanOrEqualTo(byId.get(f.sellOrderId()).price());
+                assertThat(f.price()).isLessThanOrEqualTo(Objects.requireNonNull(byId.get(f.buyOrderId())).price());
+                assertThat(f.price())
+                        .isGreaterThanOrEqualTo(Objects.requireNonNull(byId.get(f.sellOrderId())).price());
             }
         }
     }

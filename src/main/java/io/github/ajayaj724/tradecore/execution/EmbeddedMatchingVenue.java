@@ -43,6 +43,7 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
         if (alreadyProcessed(order.eventId())) {
             return List.of();
         }
+        rememberAccount(order.orderId(), order.account());
         List<Fill> fills = engine.submit(
                 order.symbol(), order.orderId(), engineSide(order.side()), order.price(), order.quantity());
         markProcessed(order.eventId());
@@ -52,6 +53,8 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
                     UUID.randomUUID(),
                     f.buyOrderId(),
                     f.sellOrderId(),
+                    accountOf(f.buyOrderId()),
+                    accountOf(f.sellOrderId()),
                     order.symbol(),
                     f.price(),
                     f.quantity(),
@@ -79,5 +82,20 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
                 .param("id", eventId)
                 .param("t", OffsetDateTime.now(clock))
                 .update();
+    }
+
+    private void rememberAccount(long orderId, String account) {
+        jdbc.sql("insert into execution.order_account (order_id, account) values (:id, :a)"
+                        + " on conflict (order_id) do nothing")
+                .param("id", orderId)
+                .param("a", account)
+                .update();
+    }
+
+    private String accountOf(long orderId) {
+        return jdbc.sql("select account from execution.order_account where order_id = :id")
+                .param("id", orderId)
+                .query(String.class)
+                .single();
     }
 }

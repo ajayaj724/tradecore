@@ -2043,7 +2043,9 @@ git commit -m "feat: orders fill listener (idempotent) + ownership-checked GET"
 
 ### Task 8: End-to-end + security integration proof
 
-The headline: one order fills end-to-end through the real async pipeline (POST → risk → OrderAccepted → engine → TradeExecuted → order FILLED), asserted via the API. Plus the security ITs (unauth, ownership).
+The headline: one order fills end-to-end through the real async pipeline (POST → risk → OrderAccepted → engine → TradeExecuted → order FILLED), asserted via the API.
+
+> **Execution deviation (applied):** `OrderOwnershipIT` moved to Task 7 (with the GET endpoint it covers). `OrderFillEndToEndIT` carries `@DirtiesContext(classMode = BEFORE_CLASS)` so it runs against a fresh in-memory engine and fresh seeds — otherwise resting ACME orders left in the shared engine bean by other tests would cross the e2e's sell and break the deterministic fill. Unauthenticated 401 is already covered by Phase 1A's `SecurityConfigIT`.
 
 **Files:**
 - Create: `src/test/java/io/github/ajayaj724/tradecore/orders/OrderFillEndToEndIT.java`

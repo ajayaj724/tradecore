@@ -125,7 +125,8 @@ public class PortfolioService {
                 .param("a", account)
                 .param("s", symbol)
                 .query(Long.class)
-                .single();
+                .optional()
+                .orElse(0L);
     }
 
     private boolean alreadyProcessed(UUID eventId) {

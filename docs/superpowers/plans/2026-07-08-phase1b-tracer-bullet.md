@@ -1669,14 +1669,16 @@ class EmbeddedMatchingVenueIT {
         this.jdbc = jdbc;
     }
 
-    private static OrderAccepted accepted(long id, Side side, long price, long qty) {
-        return new OrderAccepted(UUID.randomUUID(), id, "trader1", "ZZZ", side, price, qty, Instant.EPOCH);
+    // Distinct symbols per method: the engine is a shared in-memory bean across the suite, so each
+    // test uses its own symbol (unused elsewhere) to keep its book isolated.
+    private static OrderAccepted accepted(long id, Side side, long price, long qty, String symbol) {
+        return new OrderAccepted(UUID.randomUUID(), id, "trader1", symbol, side, price, qty, Instant.EPOCH);
     }
 
     @Test
     void crossingOrdersProduceATrade() {
-        venue.submit(accepted(101L, Side.SELL, 10000L, 5L)); // rests
-        List<TradeExecuted> trades = venue.submit(accepted(102L, Side.BUY, 10000L, 5L));
+        venue.submit(accepted(101L, Side.SELL, 10000L, 5L, "ZZZ")); // rests
+        List<TradeExecuted> trades = venue.submit(accepted(102L, Side.BUY, 10000L, 5L, "ZZZ"));
 
         assertThat(trades).hasSize(1);
         assertThat(trades.getFirst().buyOrderId()).isEqualTo(102L);
@@ -1686,7 +1688,7 @@ class EmbeddedMatchingVenueIT {
 
     @Test
     void redeliveryOfSameEventIsANoOp() {
-        OrderAccepted sell = accepted(201L, Side.SELL, 10000L, 5L);
+        OrderAccepted sell = accepted(201L, Side.SELL, 10000L, 5L, "YYY");
         venue.submit(sell);
         List<TradeExecuted> second = venue.submit(sell); // same eventId → deduped
 

@@ -84,4 +84,21 @@ class ReconciliationServiceIT {
         reconciliation.reconcile();
         assertThat(driftPairs()).isGreaterThanOrEqualTo(1d);
     }
+
+    @Test
+    @Transactional
+    void heldPositionWithNoPriceIsOmittedFromEquityWithoutThrowing() {
+        // qty != 0 but NO marketdata.last_price row for RCT -> lastPrice throws EmptyResultDataAccessException,
+        // which reconcile() catches and omits the symbol from equity instead of aborting.
+        jdbc.sql("insert into portfolio.position (account, symbol, total_qty) values ('recon-acct', 'RCT', 5)")
+                .update();
+        jdbc.sql("insert into risk.settled_holdings (account, symbol, qty) values ('recon-acct', 'RCT', 5)")
+                .update();
+        // deliberately no marketdata.last_price row for RCT
+
+        reconciliation.reconcile(); // must not throw
+
+        assertThat(equity("recon-acct")).isZero(); // RCT omitted (no price); no ledger cash for recon-acct
+        assertThat(driftPairs()).isZero(); // holdings 5==5, cash 0==0
+    }
 }

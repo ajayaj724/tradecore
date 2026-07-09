@@ -9,4 +9,5 @@ curl -sf "$KC_URL/realms/$KC_REALM/.well-known/openid-configuration" >/dev/null 
   || "$(dirname "$0")/up.sh"
 
 note "starting tradecore on $APP_URL (Ctrl-C to stop)"
-exec mvn spring-boot:run
+# 'local' profile opens /actuator/prometheus for the compose scraper (ADR-0017); prod is secure by default
+exec mvn spring-boot:run -Dspring-boot.run.profiles=local

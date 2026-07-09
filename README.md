@@ -283,8 +283,6 @@ and holdings settlement, reconciliation. Remaining scope:
 
 - **Frontend + AI/MCP layer** — the Next.js dashboard and the AI/MCP integration are separate
   designs, not yet started ([design spec §10](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#10-delivery-phases)).
-- **Production security posture for `/actuator/prometheus`** — unauthenticated locally only; it must
-  be locked down before any non-local deploy ([ADR-0002](docs/adr/0002-actuator-prometheus-scrape-exposure.md)).
 - **OWASP Dependency-Check** — wired into CI as a job that runs when an `NVD_API_KEY` repository
   secret is set (Trivy already scans the image for CVEs on every build). Add the secret to enable it.
 - **Single-writer-per-symbol engine threading** — deferred; the engine is still `synchronized`

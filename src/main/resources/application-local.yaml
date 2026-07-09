@@ -1,0 +1,9 @@
+# Local development profile — activated by scripts/run.sh (-Dspring-boot.run.profiles=local).
+#
+# Opens /actuator/prometheus for the compose Prometheus container, which scrapes over plain HTTP and
+# cannot present an OAuth2 bearer token per scrape (ADR-0017). This is the ONLY place the scrape is
+# opened: without the local profile the endpoint is authenticated like every other endpoint, so a
+# non-local deployment is secure by default.
+tradecore:
+  security:
+    expose-prometheus-scrape: true

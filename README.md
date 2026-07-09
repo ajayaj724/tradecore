@@ -183,6 +183,40 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
   stdout only today. Tracked for Phase 2
 - **CONTRIBUTING.md, SECURITY.md, CI badge** — spec §11 items; not created in Phase 1A
 
+## Load testing & SLOs
+
+Phase 3B adds a [Gatling](https://gatling.io) load test (Java DSL) that drives the real
+authenticated order path — `POST /api/v1/orders` -> security -> risk -> matching engine -> response —
+under sustained concurrency and asserts published SLOs. It lives entirely behind a `gatling` Maven
+profile (simulations in `src/gatling/java`, added as a source root only when the profile is active),
+so the normal `mvn verify` gate never resolves Gatling or runs a simulation. It is a manual/nightly
+tool, not part of the PR gate. See [ADR-0011](docs/adr/0011-gatling-load-tests-and-published-slos.md).
+
+```bash
+scripts/up.sh    # Postgres + Keycloak (a running app + platform is required)
+scripts/run.sh   # app on :8080
+mvn -Pgatling gatling:test -Dgatling.simulationClass=gatling.OrderLoadSimulation
+```
+
+Rate, duration, target URL, and SLO thresholds are all `-D`-overridable (e.g. `-Dtradecore.rate=100
+-Dtradecore.durationSec=120`). Published SLOs on the reference local stack (50 orders/s for 60 s;
+the run fails if breached):
+
+| Metric | SLO | Observed at calibration |
+|---|---|---|
+| `POST /api/v1/orders` p50 | < 25 ms | 5–6 ms |
+| `POST /api/v1/orders` p99 | < 100 ms | 14–59 ms |
+| Failed (non-2xx) | < 0.1 % | 0.0 % |
+| Sustained throughput | ≥ 50 orders/s | 50 orders/s |
+
+These are targets on the documented local environment, not absolute production numbers — the value
+is the repeatable harness and the regression signal. Gatling's HTML report is written to
+`target/gatling/`.
+
+> **Runbook note:** the compose `postgres:18` service currently fails to start because `compose.yaml`
+> mounts its data volume at the pre-18 path (`/var/lib/postgresql/data`); `postgres:18` expects the
+> mount at `/var/lib/postgresql`. This breaks `scripts/run.sh` until fixed — tracked separately.
+
 ## What's not here yet
 
 Phase 1B delivered the walking-skeleton slice (one order fills end-to-end). Explicitly out of

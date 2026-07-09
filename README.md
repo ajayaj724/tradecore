@@ -1,13 +1,14 @@
 # tradecore
 
 An enterprise brokerage order-management system, built as a modular monolith on Spring Boot 4
-and Spring Modulith. This repository is the **Phase 1A chassis**: the platform, security,
-observability, and quality-gate scaffolding that every domain module (orders, risk, execution,
-matching engine, ...) will be built on in the phases that follow. Full design rationale lives
-in [`docs/superpowers/specs/2026-07-06-brokerage-oms-design.md`](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md).
+and Spring Modulith. The platform, security, observability, and quality-gate scaffolding are in
+place, and the domain modules (`orders`, `risk`, `execution` + framework-free matching engine,
+`marketdata`, `portfolio`, `ledger`, `reconciliation`) are built on top of it. Full design
+rationale lives in [`docs/superpowers/specs/2026-07-06-brokerage-oms-design.md`](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md).
 
-> **Status:** Phase 1A complete. No domain/trading functionality exists yet — see
-> [What's not here yet](#whats-not-here-yet) before opening an issue about a missing feature.
+> **Status:** Phases 1–3 complete. Orders submit, risk-check, match, fill, settle, and **cancel**
+> end-to-end; **market orders** (capped immediate-or-cancel) and LIMIT orders are both supported.
+> See [What's not here yet](#whats-not-here-yet) for the remaining scope.
 
 ## Demo credentials — local only
 
@@ -277,15 +278,22 @@ Reference numbers on local hardware, JDK 25:
 
 ## What's not here yet
 
-Phase 1B delivered the walking-skeleton slice (one order fills end-to-end). Explicitly out of
-scope for this commit:
+The backend trading path is complete — LIMIT and MARKET orders, partial fills, cancellation, cash
+and holdings settlement, reconciliation. Remaining scope:
 
-- **Market + cancel orders** — Phase 1B is LIMIT-only with partial fills; market orders and
-  cancel are deferred ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md))
-- **OWASP Dependency-Check** and a live/verified gitleaks run — need an NVD API key and a
-  publish target respectively; both wire in when this repo is pushed to GitHub
+- **Frontend + AI/MCP layer** — the Next.js dashboard and the AI/MCP integration are separate
+  designs, not yet started ([design spec §10](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#10-delivery-phases)).
+- **Production security posture for `/actuator/prometheus`** — unauthenticated locally only; it must
+  be locked down before any non-local deploy ([ADR-0002](docs/adr/0002-actuator-prometheus-scrape-exposure.md)).
+- **OWASP Dependency-Check** — wired into CI as a job that runs when an `NVD_API_KEY` repository
+  secret is set (Trivy already scans the image for CVEs on every build). Add the secret to enable it.
+- **Single-writer-per-symbol engine threading** — deferred; the engine is still `synchronized`
+  ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md)). A *true unpriced* market
+  order is likewise deferred ([ADR-0016](docs/adr/0016-market-orders-as-capped-ioc.md)).
 - Reconciliation reports the latest run only (no historical drift storage) and does not remediate
   drift or page on it — alerting on the emitted gauges is a deploy-time concern.
+- **Out of scope for v1** (by design): short selling, derivatives, GTC orders, partial
+  cancels/amends, corporate actions, multi-currency, real user registration.
 
 ## Stack
 

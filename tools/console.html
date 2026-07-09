@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tradecore · local dev console</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel2: #1c232d; --border: #2a323d;
+    --text: #e6edf3; --muted: #9aa7b4; --accent: #4aa3ff; --green: #3fb950; --red: #f85149;
+    --amber: #d29922; --code: #0b0e13; --chip: #21324a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa; --panel: #ffffff; --panel2: #f2f5f8; --border: #d0d7de;
+      --text: #1f2328; --muted: #59636e; --accent: #0969da; --green: #1a7f37; --red: #cf222e;
+      --amber: #9a6700; --code: #f6f8fa; --chip: #ddf4ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 0 20px 80px;
+  }
+  header { max-width: 1100px; margin: 0 auto; padding: 32px 0 8px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h1 .tag { color: var(--muted); font-weight: 400; font-size: 16px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .quickstart {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center;
+  }
+  .quickstart b { color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; }
+  section { margin-top: 34px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+       margin: 0 0 14px; font-weight: 600; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .card .top { display: flex; align-items: center; gap: 8px; }
+  .card .name { font-weight: 600; }
+  .card .desc { color: var(--muted); font-size: 13px; }
+  a.svc { color: var(--accent); text-decoration: none; font-size: 13px; word-break: break-all; }
+  a.svc:hover { text-decoration: underline; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: 0 0 auto;
+         box-shadow: 0 0 0 3px transparent; transition: background .2s; }
+  .dot.up { background: var(--green); }
+  .dot.down { background: var(--red); }
+  .cmd {
+    display: flex; align-items: center; gap: 8px; background: var(--code);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-x: auto;
+  }
+  .cmd code { font: 12.5px/1.4 "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+              white-space: pre; color: var(--text); }
+  .copy {
+    margin-left: auto; flex: 0 0 auto; cursor: pointer; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--muted); border-radius: 6px; padding: 3px 9px; font-size: 12px;
+  }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+  .copy.done { color: var(--green); border-color: var(--green); }
+  .chip { display: inline-block; background: var(--chip); color: var(--accent); border-radius: 999px;
+          padding: 1px 9px; font-size: 11px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+          border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  tr:last-child td { border-bottom: none; }
+  td code { background: var(--code); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+  .method { font-weight: 700; font-size: 12px; }
+  .post { color: var(--green); } .get { color: var(--accent); }
+  footer { max-width: 1100px; margin: 40px auto 0; color: var(--muted); font-size: 12.5px;
+           border-top: 1px solid var(--border); padding-top: 16px; }
+  .note { color: var(--amber); }
+</style>
+</head>
+<body>
+<header>
+  <h1>tradecore <span class="tag">· local dev console</span></h1>
+  <p class="sub">A launcher and cheat-sheet for the backend. Links open the local stack; every command
+    has a copy button. Nothing here runs code in the browser — the scripts are copied for your terminal.</p>
+  <div class="quickstart">
+    <span><b>Start:</b>&nbsp; <code>scripts/up.sh</code> &nbsp;→&nbsp; <code>scripts/run.sh</code></span>
+    <span><b>Then:</b>&nbsp; open Swagger UI, or copy an API call below</span>
+    <span id="appstate" class="chip">checking app…</span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>Services <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(live dot = reachable)</span></h2>
+    <div class="grid" id="services"></div>
+  </section>
+
+  <section>
+    <h2>Manage the application</h2>
+    <div class="grid" id="scripts"></div>
+  </section>
+
+  <section>
+    <h2>API cookbook <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(scripts/api.sh adds auth + Idempotency-Key)</span></h2>
+    <div class="grid" id="api"></div>
+  </section>
+
+  <section>
+    <h2>REST endpoints</h2>
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Role</th><th>What</th></tr></thead>
+      <tbody id="endpoints"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Demo credentials <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(local compose only — non-secrets)</span></h2>
+    <table>
+      <thead><tr><th>User</th><th>Password</th><th>Role</th><th>Notes</th></tr></thead>
+      <tbody id="users"></tbody>
+    </table>
+  </section>
+</main>
+
+<footer>
+  Generated dev console · lives at <code>tools/console.html</code>. Ports are loopback-bound
+  (<code>127.0.0.1</code>). Keycloak admin console is <code>admin</code>/<code>admin</code>.
+  See <code>README.md</code>, <code>CONTRIBUTING.md</code>, and <code>docs/adr/</code> for the full story.
+</footer>
+
+<script>
+  const APP = "http://localhost:8080";
+  const services = [
+    { name: "App (health)", url: APP + "/actuator/health", desc: "Liveness/readiness — public", ping: true },
+    { name: "Swagger UI", url: APP + "/swagger-ui.html", desc: "Interactive API docs — public", ping: true },
+    { name: "OpenAPI JSON", url: APP + "/v3/api-docs", desc: "Raw OpenAPI 3 spec", ping: false },
+    { name: "Prometheus scrape", url: APP + "/actuator/prometheus", desc: "App metrics — local profile only (ADR-0017)", ping: false },
+    { name: "Grafana", url: "http://localhost:3000", desc: "Dashboards (anonymous viewer)", ping: true },
+    { name: "Prometheus", url: "http://localhost:9090", desc: "Metrics server / query UI", ping: true },
+    { name: "Tempo", url: "http://localhost:3200", desc: "Trace store (query via Grafana)", ping: true },
+    { name: "Keycloak", url: "http://localhost:8081", desc: "Realm 'tradecore' — admin/admin", ping: true },
+    { name: "Postgres", url: "", desc: "localhost:5432 · tradecore/tradecore · use scripts/psql.sh", ping: false },
+  ];
+  const scripts = [
+    ["scripts/up.sh", "Start the platform (Postgres, Keycloak, OTel+Grafana). Waits for readiness."],
+    ["scripts/run.sh", "Run the app in the foreground (local profile). Auto-starts the platform if down."],
+    ["scripts/down.sh", "Stop the platform. Add --wipe to drop volumes and reset data."],
+    ["scripts/gate.sh", "Full quality gate: spotless:apply + mvn verify. Run before every commit."],
+    ["scripts/smoke.sh", "End-to-end smoke suite against the running app (needs up.sh + run.sh)."],
+    ["scripts/regression.sh", "One-command regression: gate + smoke. Add --e2e to require the app up."],
+    ["scripts/token.sh trader1", "Print a Keycloak bearer token for a demo user (default trader1/demo)."],
+    ["scripts/logs.sh keycloak", "Tail compose logs for a service (omit name for all)."],
+    ["scripts/psql.sh", "Open a psql shell on the tradecore database."],
+  ];
+  const api = [
+    ["Submit a LIMIT order",
+     `scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"BUY","price":10000,"quantity":5}' trader1`],
+    ["Submit a MARKET order (capped IOC)",
+     `scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"BUY","price":10500,"quantity":5,"type":"MARKET"}' trader1`],
+    ["Sell side (rests as an ask)",
+     `scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"SELL","price":9000,"quantity":5}' trader2`],
+    ["Cancel an order",
+     `scripts/api.sh POST /api/v1/orders/42/cancel '' trader1`],
+    ["Read an order back",
+     `scripts/api.sh GET /api/v1/orders/42 trader1`],
+    ["Raw token + curl",
+     `curl -H "Authorization: Bearer $(scripts/token.sh trader1)" ${APP}/api/v1/orders/42`],
+  ];
+  const endpoints = [
+    ["POST", "post", "/api/v1/orders", "TRADER", "Submit a LIMIT or MARKET order (Idempotency-Key header)"],
+    ["POST", "post", "/api/v1/orders/{id}/cancel", "TRADER", "Request cancellation (202; async → CANCELLED)"],
+    ["GET", "get", "/api/v1/orders/{id}", "TRADER / OPS", "Read one order (owner-scoped; OPS sees any)"],
+    ["GET", "get", "/actuator/health", "public", "Liveness / readiness"],
+    ["GET", "get", "/actuator/prometheus", "local only", "Metrics scrape (authenticated off the local profile)"],
+  ];
+  const users = [
+    ["trader1", "demo", "TRADER", "Seeded cash + ACME holdings"],
+    ["trader2", "demo", "TRADER", "Seeded cash + ACME holdings"],
+    ["ops1", "demo", "OPS", "Can read any order"],
+    ["admin1", "demo", "ADMIN", "Admin role"],
+  ];
+
+  const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  function copyBtn(text) {
+    return `<button class="copy" data-cmd="${esc(text).replace(/"/g, "&quot;")}">copy</button>`;
+  }
+
+  document.getElementById("services").innerHTML = services.map(s => `
+    <div class="card">
+      <div class="top">
+        <span class="dot" ${s.ping ? `data-ping="${s.url}"` : ""}></span>
+        <span class="name">${s.name}</span>
+      </div>
+      <div class="desc">${s.desc}</div>
+      ${s.url ? `<a class="svc" href="${s.url}" target="_blank" rel="noopener">${s.url}</a>` : ""}
+    </div>`).join("");
+
+  document.getElementById("scripts").innerHTML = scripts.map(([cmd, desc]) => `
+    <div class="card">
+      <div class="cmd"><code>${esc(cmd)}</code>${copyBtn(cmd)}</div>
+      <div class="desc">${desc}</div>
+    </div>`).join("");
+
+  document.getElementById("api").innerHTML = api.map(([title, cmd]) => `
+    <div class="card">
+      <div class="name">${title}</div>
+      <div class="cmd"><code>${esc(cmd)}</code>${copyBtn(cmd)}</div>
+    </div>`).join("");
+
+  document.getElementById("endpoints").innerHTML = endpoints.map(([m, cls, path, role, what]) => `
+    <tr><td><span class="method ${cls}">${m}</span></td><td><code>${esc(path)}</code></td>
+    <td>${role}</td><td>${what}</td></tr>`).join("");
+
+  document.getElementById("users").innerHTML = users.map(([u, p, r, n]) => `
+    <tr><td><code>${u}</code></td><td><code>${p}</code></td><td>${r}</td><td>${n}</td></tr>`).join("");
+
+  // copy-to-clipboard
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".copy");
+    if (!b) return;
+    navigator.clipboard.writeText(b.dataset.cmd).then(() => {
+      b.textContent = "copied"; b.classList.add("done");
+      setTimeout(() => { b.textContent = "copy"; b.classList.remove("done"); }, 1200);
+    });
+  });
+
+  // live reachability dots (no-cors: resolve = reachable, reject = down)
+  function ping(url, dot) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    fetch(url, { mode: "no-cors", signal: ctrl.signal })
+      .then(() => dot.classList.add("up"))
+      .catch(() => dot.classList.add("down"))
+      .finally(() => clearTimeout(t));
+  }
+  document.querySelectorAll(".dot[data-ping]").forEach(d => ping(d.dataset.ping, d));
+
+  // app up/down chip
+  (function () {
+    const chip = document.getElementById("appstate");
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    fetch(APP + "/actuator/health", { mode: "no-cors", signal: ctrl.signal })
+      .then(() => { chip.textContent = "app is up ✓"; chip.style.color = "var(--green)"; })
+      .catch(() => { chip.textContent = "app is down — run scripts/run.sh"; chip.style.color = "var(--red)"; })
+      .finally(() => clearTimeout(t));
+  })();
+</script>
+</body>
+</html>

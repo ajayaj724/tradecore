@@ -76,8 +76,10 @@ check_openapi_and_swagger_are_public() {
 }
 
 check_prometheus_scrape_is_public() {
+  # scripts/run.sh runs under the 'local' profile, which opens this endpoint for the compose scraper
+  # (ADR-0017); it is authenticated by default in any non-local deployment.
   call GET /actuator/prometheus ""
-  expect_status "Prometheus scrape is public" 200
+  expect_status "Prometheus scrape is public under the local profile" 200
 }
 
 check_order_fills_end_to_end() {

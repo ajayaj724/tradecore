@@ -12,11 +12,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+// The local profile opens /actuator/prometheus for the compose scraper (ADR-0017); by default it is
+// authenticated like every other endpoint.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfig.class)
+@ActiveProfiles("local")
 class SecurityConfigPrometheusIT {
 
     private final MockMvc mvc;
@@ -27,7 +31,7 @@ class SecurityConfigPrometheusIT {
     }
 
     @Test
-    void prometheusScrapeIsPublic() throws Exception {
+    void prometheusScrapeIsPublicUnderLocalProfile() throws Exception {
         mvc.perform(get("/actuator/prometheus")).andExpect(status().isOk());
     }
 

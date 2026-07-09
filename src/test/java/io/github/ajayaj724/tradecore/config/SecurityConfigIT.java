@@ -32,6 +32,14 @@ class SecurityConfigIT {
     }
 
     @Test
+    void prometheusRequiresAuthByDefault() throws Exception {
+        // Secure by default: the scrape endpoint is only opened under the local profile (ADR-0017).
+        mvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
     void unauthenticatedGetsProblemJson401() throws Exception {
         mvc.perform(get("/api/v1/anything"))
                 .andExpect(status().isUnauthorized())

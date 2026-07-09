@@ -1,6 +1,6 @@
 # 0002: `/actuator/prometheus` exposure for local compose scraping
 
-- Status: accepted (local-only); production posture deferred
+- Status: accepted (local-only) — production posture **resolved by [ADR-0017](0017-prometheus-scrape-secure-by-default.md)** (secure by default, local-profile opt-in)
 - Date: 2026-07-06
 
 ## Context

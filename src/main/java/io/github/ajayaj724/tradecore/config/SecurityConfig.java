@@ -3,6 +3,7 @@ package io.github.ajayaj724.tradecore.config;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -22,25 +23,32 @@ import org.springframework.security.web.SecurityFilterChain;
 class SecurityConfig {
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, ProblemDetailsAuthHandlers handlers) throws Exception {
+    SecurityFilterChain filterChain(
+            HttpSecurity http,
+            ProblemDetailsAuthHandlers handlers,
+            @Value("${tradecore.security.expose-prometheus-scrape:false}") boolean exposePrometheusScrape)
+            throws Exception {
         return http.csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(
                         org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**", "/actuator/health")
-                        .permitAll()
-                        // local-only compose scrape; lock down before any non-local deploy
-                        .requestMatchers("/actuator/prometheus")
-                        .permitAll()
-                        // OpenAPI docs + Swagger UI are a sanctioned unauthenticated exception
-                        .requestMatchers(
-                                "/v3/api-docs",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs.yaml",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/actuator/health/**", "/actuator/health")
+                            .permitAll();
+                    if (exposePrometheusScrape) {
+                        // secured by default; opened only under the local profile for the compose scraper (ADR-0017)
+                        auth.requestMatchers("/actuator/prometheus").permitAll();
+                    }
+                    // OpenAPI docs + Swagger UI are a sanctioned unauthenticated exception
+                    auth.requestMatchers(
+                                    "/v3/api-docs",
+                                    "/v3/api-docs/**",
+                                    "/v3/api-docs.yaml",
+                                    "/swagger-ui/**",
+                                    "/swagger-ui.html")
+                            .permitAll()
+                            .anyRequest()
+                            .authenticated();
+                })
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakRealmRoles()))
                         .authenticationEntryPoint(handlers)
                         .accessDeniedHandler(handlers))

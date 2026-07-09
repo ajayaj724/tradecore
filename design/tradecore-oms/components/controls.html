@@ -1,0 +1,99 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Buttons & controls · tradecore OMS</title>
+<style>
+  :root{
+    --paper:#F7F5F0;--panel:#FFFDF8;--ink:#14181F;--ink2:#5A616B;--ink3:#8B9099;--line:#E4DFD3;--line2:#D3CCBC;
+    --buy:#0E7C66;--buybg:#E7F1ED;--sell:#C0392B;--sellbg:#F7E7E4;--gold:#9A7B2E;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;padding:32px;max-width:760px}
+  .eyebrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin:0 0 6px}
+  h1{font-size:15px;font-weight:700;margin:0 0 4px}
+  .lede{color:var(--ink2);font-size:13px;margin:0 0 26px;max-width:60ch}
+  section{border-top:1px solid var(--line);padding:20px 0}
+  section:first-of-type{border-top:none;padding-top:0}
+  .lbl{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin:0 0 12px}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+  .btn{font-family:var(--sans);font-size:13px;font-weight:650;letter-spacing:.01em;border-radius:3px;
+    padding:10px 18px;border:1px solid transparent;cursor:pointer}
+  .btn-primary{background:var(--ink);color:#F7F5F0}
+  .btn-buy{background:var(--buy);color:#fff}
+  .btn-sell{background:var(--sell);color:#fff}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
+  .btn-danger{background:transparent;color:var(--sell);border-color:#E0BDB6}
+  .btn-sm{padding:6px 12px;font-size:12px}
+
+  .field{max-width:260px}
+  .field .cap{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between}
+  .input{width:100%;border:1px solid var(--line2);border-radius:3px;background:var(--panel);
+    padding:9px 11px;font-family:var(--mono);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .affix{position:relative}
+  .affix .rup{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-family:var(--mono);font-size:15px}
+  .affix .input{padding-left:24px}
+
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden}
+  .seg button{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 18px;border:none;background:var(--panel);color:var(--ink2);cursor:pointer}
+  .seg button + button{border-left:1px solid var(--line)}
+  .seg .on-buy{background:var(--buy);color:#fff} .seg .on-sell{background:var(--sell);color:#fff}
+  .seg .on-ink{background:var(--ink);color:#F7F5F0}
+
+  .select{position:relative;max-width:200px}
+  .select select{-webkit-appearance:none;appearance:none;width:100%;border:1px solid var(--line2);border-radius:3px;
+    background:var(--panel);padding:9px 30px 9px 11px;font-family:var(--sans);font-size:13px;color:var(--ink)}
+  .select::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--ink3);pointer-events:none}
+</style>
+</head>
+<body>
+  <p class="eyebrow">Components</p>
+  <h1>Buttons &amp; controls</h1>
+  <p class="lede">Actions say exactly what they do. The primary action commits an order; buy and sell
+    carry the colour language; cancel is quiet until you need it.</p>
+
+  <section>
+    <p class="lbl">Buttons</p>
+    <div class="row">
+      <button class="btn btn-primary">Place order</button>
+      <button class="btn btn-buy">Buy ACME</button>
+      <button class="btn btn-sell">Sell ACME</button>
+      <button class="btn btn-ghost">Cancel</button>
+      <button class="btn btn-danger btn-sm">Cancel order</button>
+    </div>
+  </section>
+
+  <section>
+    <p class="lbl">Segmented toggles</p>
+    <div class="row">
+      <div class="seg"><button class="on-buy">BUY</button><button>SELL</button></div>
+      <div class="seg"><button>BUY</button><button class="on-sell">SELL</button></div>
+      <div class="seg"><button class="on-ink">LIMIT</button><button>MARKET</button></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="lbl">Inputs</p>
+    <div class="row" style="align-items:flex-start">
+      <div class="field">
+        <div class="cap"><span>Limit price</span><span>paise → ₹</span></div>
+        <div class="affix"><span class="rup">₹</span><input class="input" value="100.00" /></div>
+      </div>
+      <div class="field" style="max-width:150px">
+        <div class="cap"><span>Quantity</span></div>
+        <input class="input" value="5" />
+      </div>
+      <div class="field" style="max-width:200px">
+        <div class="cap"><span>Symbol</span></div>
+        <div class="select"><select><option>ACME</option><option>INFY</option></select></div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

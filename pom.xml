@@ -205,4 +205,51 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- Load/performance testing (Phase 3B). Fully isolated: the default build and CI gate never
+         resolve Gatling or run simulations. Activate explicitly against a running app with
+         `mvn -Pgatling gatling:test`. Simulations live in src/gatling/java (not a compile source
+         root) so they never touch the unit/IT compile path. See ADR-0011 and the README
+         "Load testing & SLOs" section. -->
+    <profile>
+      <id>gatling</id>
+      <dependencies>
+        <dependency>
+          <groupId>io.gatling.highcharts</groupId>
+          <artifactId>gatling-charts-highcharts</artifactId>
+          <version>3.15.1</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <!-- Compile the load simulations (src/gatling/java) only when this profile is active, so
+               the default build and CI gate never compile or scan them. Gatling relies on the
+               standard Maven compiler for Java simulations, so the folder must be a test-source
+               root; add-test-source scopes that to this profile. -->
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.1</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+            <executions>
+              <execution>
+                <id>add-gatling-sources</id>
+                <phase>generate-test-sources</phase>
+                <goals><goal>add-test-source</goal></goals>
+                <configuration>
+                  <sources><source>src/gatling/java</source></sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>io.gatling</groupId>
+            <artifactId>gatling-maven-plugin</artifactId>
+            <version>4.21.8</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

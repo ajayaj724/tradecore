@@ -117,6 +117,12 @@ The API is documented with OpenAPI 3 (springdoc): the spec is at `/v3/api-docs` 
 **Authorize** button that takes a Keycloak bearer token (`scripts/token.sh`) so secured endpoints
 can be exercised from the browser.
 
+`/api/v1/**` is **rate-limited per authenticated user** (Bucket4j token bucket, default 100/min,
+`tradecore.ratelimit.*`); over-limit calls get a `429` RFC 9457 Problem Detail with a `Retry-After`
+header. The app also runs with **graceful shutdown** (`server.shutdown: graceful`) so in-flight
+requests drain on SIGTERM instead of being dropped. See
+[ADR-0014](docs/adr/0014-api-rate-limiting-and-graceful-shutdown.md).
+
 ## Observability
 
 The app emits OTLP traces and Prometheus-scraped metrics only; the compose stack wires them

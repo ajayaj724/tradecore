@@ -71,6 +71,10 @@
          spring-boot-starter-parent 4.0.5, verified via its pom); the 2.8.x line targets Boot 3.
          The starter transitively brings the -api starter and swagger-ui webjar. -->
     <dependency><groupId>org.springdoc</groupId><artifactId>springdoc-openapi-starter-webmvc-ui</artifactId><version>3.0.3</version></dependency> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+    <!-- API-edge rate limiting (token bucket). bucket4j-core stopped at 8.10.x; modern releases are
+         split per JDK, so bucket4j_jdk17-core (JDK 17+) is the current core for Java 25. Package is
+         still io.github.bucket4j. -->
+    <dependency><groupId>com.bucket4j</groupId><artifactId>bucket4j_jdk17-core</artifactId><version>8.19.0</version></dependency> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
 
     <!-- test -->
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>

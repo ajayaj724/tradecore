@@ -1,6 +1,11 @@
+server:
+  # drain in-flight requests on shutdown instead of dropping them (spec §7)
+  shutdown: graceful
 spring:
   application:
     name: tradecore
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   threads:
     virtual:
       enabled: true
@@ -46,6 +51,11 @@ tradecore:
     poll:
       initial-delay-ms: 5000
       fixed-delay-ms: 5000
+  ratelimit:
+    # per-authenticated-user token bucket on /api/v1/**: capacity tokens, greedily refilled
+    # over refill-period. 100/min is generous for interactive trading; tune per deployment.
+    capacity: 100
+    refill-period: 1m
 logging:
   structured:
     format:

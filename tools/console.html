@@ -137,7 +137,7 @@
     { name: "Prometheus scrape", url: APP + "/actuator/prometheus", desc: "App metrics — local profile only (ADR-0017)", ping: false },
     { name: "Grafana", url: "http://localhost:3000", desc: "Dashboards (anonymous viewer)", ping: true },
     { name: "Prometheus", url: "http://localhost:9090", desc: "Metrics server / query UI", ping: true },
-    { name: "Tempo", url: "http://localhost:3200", desc: "Trace store (query via Grafana)", ping: true },
+    { name: "Tempo", url: "http://localhost:3200/status", desc: "Trace store — no browser UI; view traces in Grafana › Explore › Tempo", ping: true },
     { name: "Keycloak", url: "http://localhost:8081", desc: "Realm 'tradecore' — admin/admin", ping: true },
     { name: "Postgres", url: "", desc: "localhost:5432 · tradecore/tradecore · use scripts/psql.sh", ping: false },
   ];

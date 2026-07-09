@@ -44,12 +44,22 @@ public class MarketDataService {
 
     @Transactional
     public void applyExternalPrice(String symbol, long price, Instant observedAt) {
-        jdbc.sql("insert into marketdata.last_price (symbol, price) values (:s, :p)"
-                        + " on conflict (symbol) do update set price = :p")
+        // Publish-on-change: the scheduled feed re-applies every symbol each poll; emitting
+        // PriceUpdated only when the stored price actually moves keeps the event-publication and
+        // downstream processed-event tables from growing unboundedly. The conditional upsert does
+        // the compare-and-set atomically — RETURNING yields a row only on insert or a real change.
+        boolean changed = jdbc.sql("insert into marketdata.last_price (symbol, price) values (:s, :p)"
+                        + " on conflict (symbol) do update set price = :p"
+                        + " where marketdata.last_price.price <> excluded.price"
+                        + " returning price")
                 .param("s", symbol)
                 .param("p", price)
-                .update();
-        events.publishEvent(new PriceUpdated(UUID.randomUUID(), symbol, price, observedAt));
+                .query(Long.class)
+                .optional()
+                .isPresent();
+        if (changed) {
+            events.publishEvent(new PriceUpdated(UUID.randomUUID(), symbol, price, observedAt));
+        }
     }
 
     public long lastPrice(String symbol) {

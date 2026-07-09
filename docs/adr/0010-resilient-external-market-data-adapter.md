@@ -54,6 +54,19 @@ with no source ranking or reconciliation. This mirrors how a real market treats 
 the two sources are not in conflict, they're both "the last observed price," and Phase 2C's
 `reconciliation` module (ADR-0009) is the place to detect if they drift apart, not this module.
 
+**Publish `PriceUpdated` on change only, for the scheduled external path.** The poller re-applies
+every configured symbol each cycle, so unconditionally emitting a `PriceUpdated` per poll would
+grow the Modulith `event_publication` outbox and every downstream module's `processed_event` table
+without bound (~one row per symbol per poll, forever), for zero information gain when the price
+hasn't moved. `applyExternalPrice` therefore writes via a conditional upsert
+(`on conflict do update ... where last_price.price <> excluded.price returning price`) and publishes
+only when that statement reports an insert or a real change — a single atomic compare-and-set, so
+it stays correct under interleaving with the internal-trade writer. The internal-trade path
+(`onTrade`) keeps its plain always-publish upsert: trades are discrete, bounded market events, not a
+fixed-interval heartbeat, and each is a genuine occurrence worth emitting. This is safe for
+consumers because the sole consumer, `portfolio`, only ever upserts the latest mark price
+idempotently — a suppressed no-op re-publish would have set the same value it already holds.
+
 **Annotation-driven `resilience4j-spring-boot4:2.4.0`, with `aspectjweaver` as a required,
 spike-verified companion dependency, not `spring-boot-starter-aop`.** `spring-boot-starter-aop` has
 no Boot-4.x GA release yet, so this project depends on `org.aspectj:aspectjweaver` directly

@@ -251,5 +251,66 @@
         </plugins>
       </build>
     </profile>
+
+    <!-- Microbenchmarks (Phase 3C) for the framework-free matching engine. Fully isolated: the
+         default build and CI gate never resolve JMH or compile a benchmark. Benchmarks live in
+         src/jmh/java (not a compile source root by default). Under this profile, JMH's annotation
+         processor replaces Error Prone/NullAway (they are the gate's job, not the benchmark run's),
+         so the benchmark metadata is generated. Run against a built project:
+           mvn -Pjmh test-compile
+           mvn -Pjmh exec:java -Dexec.mainClass=org.openjdk.jmh.Main -Dexec.classpathScope=test
+         See ADR-0012. -->
+    <profile>
+      <id>jmh</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.openjdk.jmh</groupId>
+          <artifactId>jmh-core</artifactId>
+          <version>1.37</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.1</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+            <executions>
+              <execution>
+                <id>add-jmh-sources</id>
+                <phase>generate-test-sources</phase>
+                <goals><goal>add-test-source</goal></goals>
+                <configuration>
+                  <sources><source>src/jmh/java</source></sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <!-- Under -Pjmh only: drop the Error Prone plugin arg and swap the processor path to
+                   JMH's generator, so @Benchmark metadata is produced. The default gate config is
+                   untouched. -->
+              <compilerArgs combine.self="override" />
+              <annotationProcessorPaths combine.self="override">
+                <path>
+                  <groupId>org.openjdk.jmh</groupId>
+                  <artifactId>jmh-generator-annprocess</artifactId>
+                  <version>1.37</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+                </path>
+              </annotationProcessorPaths>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.6.3</version> <!-- verified 2026-07-09 via repo1 maven-metadata <release> -->
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

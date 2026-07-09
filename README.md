@@ -217,6 +217,28 @@ is the repeatable harness and the regression signal. Gatling's HTML report is wr
 > mounts its data volume at the pre-18 path (`/var/lib/postgresql/data`); `postgres:18` expects the
 > mount at `/var/lib/postgresql`. This breaks `scripts/run.sh` until fixed — tracked separately.
 
+## Engine benchmarks (JMH)
+
+Phase 3C adds [JMH](https://openjdk.org/projects/code-tools/jmh/) microbenchmarks for the
+framework-free matching engine (`MatchingEngine.submit`), isolated behind a `jmh` Maven profile
+(benchmarks in `src/jmh/java`, compiled only when the profile is active) so the normal gate never
+resolves JMH. Both benchmarks are state-neutral (the book returns to empty each invocation) so they
+measure steady-state hot-path cost. See [ADR-0012](docs/adr/0012-jmh-matching-engine-benchmarks.md).
+
+```bash
+mvn -Pjmh test-compile
+mvn -Pjmh dependency:build-classpath -Dmdep.includeScope=test -Dmdep.outputFile=target/jmh-cp.txt
+java -cp "target/test-classes:target/classes:$(cat target/jmh-cp.txt)" org.openjdk.jmh.Main
+```
+
+(A direct `java` run is used rather than `mvn exec:java` so JMH can fork a clean JVM per benchmark.)
+Reference numbers on local hardware, JDK 25:
+
+| Benchmark | Throughput | Avg time |
+|---|---|---|
+| `restThenFullyMatch` (rest + full match) | ~38.9 ops/µs | ~26 ns/op |
+| `buildDepthThenSweep` (10 rests + 10-level sweep) | ~3.7 ops/µs | ~273 ns/op |
+
 ## What's not here yet
 
 Phase 1B delivered the walking-skeleton slice (one order fills end-to-end). Explicitly out of

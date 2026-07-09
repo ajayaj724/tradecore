@@ -77,6 +77,13 @@
     <dependency><groupId>com.tngtech.archunit</groupId><artifactId>archunit-junit5</artifactId><version>1.4.2</version><scope>test</scope></dependency>
     <dependency><groupId>org.awaitility</groupId><artifactId>awaitility</artifactId><scope>test</scope></dependency>
     <dependency><groupId>net.jqwik</groupId><artifactId>jqwik</artifactId><version>1.10.1</version><scope>test</scope></dependency> <!-- verified 2026-07-08 via repo1 maven-metadata <release> -->
+    <!-- wiremock-standalone, not bare "wiremock": the core jar no longer bundles an embedded HTTP server
+         (split into wiremock-jettyNN extensions in 3.x), and pairing "wiremock" + "wiremock-jetty12"
+         pulls conflicting transitive Jetty 11/12.0/12.1 artifacts (NoClassDefFoundError on
+         org.eclipse.jetty.io.WriteFlusher$Listener at startup, confirmed by running UpstoxClientIT).
+         wiremock-standalone shades its Jetty/Guava deps under a "wiremock." package prefix, avoiding
+         the conflict, while keeping the public com.github.tomakehurst.wiremock.* API unshaded. -->
+    <dependency><groupId>org.wiremock</groupId><artifactId>wiremock-standalone</artifactId><version>3.13.2</version><scope>test</scope></dependency> <!-- verified 2026-07-09 via repo1 maven-metadata <release>; 4.0.0-beta.38 is a milestone, excluded -->
   </dependencies>
 
   <build>

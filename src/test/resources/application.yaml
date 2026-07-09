@@ -32,6 +32,9 @@ spring:
 tradecore:
   reconciliation:
     initial-delay-ms: 3600000
+  upstox:
+    poll:
+      initial-delay-ms: 3600000
 management:
   endpoints:
     web:

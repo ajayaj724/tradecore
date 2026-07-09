@@ -41,6 +41,11 @@ management:
       export:
         otlp:
           endpoint: http://localhost:4318/v1/traces
+tradecore:
+  upstox:
+    poll:
+      initial-delay-ms: 5000
+      fixed-delay-ms: 5000
 logging:
   structured:
     format:

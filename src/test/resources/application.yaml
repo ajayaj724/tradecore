@@ -37,3 +37,23 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+resilience4j:
+  circuitbreaker:
+    circuitbreaker-aspect-order: 1   # lower = outer: CB wraps Retry so retries happen inside one CB call
+    instances:
+      upstox:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+  retry:
+    retry-aspect-order: 2            # higher = inner: Retry retries the actual call before CB records one failure
+    instances:
+      upstox:
+        max-attempts: 3
+        wait-duration: 200ms
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException

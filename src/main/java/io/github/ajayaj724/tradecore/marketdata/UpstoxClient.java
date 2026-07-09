@@ -1,5 +1,7 @@
 package io.github.ajayaj724.tradecore.marketdata;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.NoSuchElementException;
@@ -10,6 +12,8 @@ import org.springframework.web.client.RestClient;
 @Component
 class UpstoxClient {
 
+    static final long UNAVAILABLE = -1L; // fallback sentinel: caller retains last-known price, publishes nothing
+
     private final RestClient rest;
     private final UpstoxProperties props;
 
@@ -18,6 +22,8 @@ class UpstoxClient {
         this.props = props;
     }
 
+    @CircuitBreaker(name = "upstox", fallbackMethod = "ltpFallback")
+    @Retry(name = "upstox")
     long ltp(String symbol) {
         String key = props.instrumentKeys().getOrDefault(symbol, symbol);
         UpstoxLtpResponse body = rest.get()
@@ -31,6 +37,11 @@ class UpstoxClient {
         }
         // per-symbol poll -> exactly one entry; response key (":" form) != request key ("|" form)
         return toPaise(body.data().values().iterator().next().lastPrice());
+    }
+
+    @SuppressWarnings("unused") // invoked reflectively by the Resilience4j aspect
+    long ltpFallback(String symbol, Throwable t) {
+        return UNAVAILABLE;
     }
 
     static long toPaise(BigDecimal rupees) {

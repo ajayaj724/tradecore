@@ -8,7 +8,9 @@ services:
       POSTGRES_PASSWORD: tradecore
     ports: ["127.0.0.1:5432:5432"]
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18+ stores data in a major-version subdirectory and refuses to start when the
+      # volume is mounted at the old /var/lib/postgresql/data path; mount the parent instead.
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tradecore"]
       interval: 5s

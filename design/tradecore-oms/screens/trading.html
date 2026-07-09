@@ -1,0 +1,163 @@
+<!-- @dsCard group="Screens" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Trading screen · tradecore OMS</title>
+<style>
+  :root{
+    --paper:#F7F5F0;--panel:#FFFDF8;--ink:#14181F;--ink2:#5A616B;--ink3:#8B9099;--line:#E4DFD3;--line2:#D3CCBC;
+    --buy:#0E7C66;--buybg:#E7F1ED;--sell:#C0392B;--sellbg:#F7E7E4;--gold:#9A7B2E;--goldbg:#F1EAD7;
+    --accepted:#2B5C8A;--acceptedbg:#E3EBF2;--amber:#B7791F;--amberbg:#F4E9D4;--muted:#8B8577;--mutedbg:#ECE8DE;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;min-width:1080px}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .topbar{display:flex;align-items:center;gap:22px;padding:14px 26px;border-bottom:1px solid var(--line2);background:var(--panel)}
+  .wm{font-weight:800;letter-spacing:-.02em;font-size:16px}
+  .wm .dot{color:var(--gold)}
+  .nav{display:flex;gap:18px;font-size:12.5px;color:var(--ink3)}
+  .nav .on{color:var(--ink);font-weight:600;position:relative}
+  .nav .on::after{content:"";position:absolute;left:0;right:0;bottom:-15px;height:2px;background:var(--gold)}
+  .spacer{margin-left:auto}
+  .cash{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+  .cash .k{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+  .cash .v{font-family:var(--mono);font-size:16px;font-weight:600}
+  .who{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}
+  .who .av{width:24px;height:24px;border-radius:50%;background:var(--goldbg);color:var(--gold);display:grid;place-items:center;font-size:11px;font-weight:800}
+
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:0;align-items:start}
+  .left{border-right:1px solid var(--line2);padding:22px;min-height:520px}
+  .right{padding:22px 26px}
+  .eyebrow{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin:0 0 12px}
+
+  /* ticket */
+  .seg{display:flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-bottom:12px}
+  .seg button{flex:1;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.04em;padding:9px 0;border:none;background:var(--panel);color:var(--ink2);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg .on-buy{background:var(--buy);color:#fff}
+  .type{display:flex;gap:8px;margin-bottom:14px}
+  .type button{flex:1;font-size:11px;font-weight:700;letter-spacing:.03em;padding:7px 0;border:1px solid var(--line2);border-radius:3px;background:var(--panel);color:var(--ink2);cursor:pointer}
+  .type .on{background:var(--ink);color:#F7F5F0;border-color:var(--ink)}
+  .field{margin-bottom:12px}
+  .field .cap{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between}
+  .affix{position:relative}.affix .rup{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);font-family:var(--mono);font-size:15px}
+  .input{width:100%;border:1px solid var(--line2);border-radius:3px;background:var(--paper);padding:10px 12px 10px 23px;font-family:var(--mono);font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .input.plain{padding-left:12px}
+  .place{width:100%;margin-top:8px;padding:12px 0;border:none;border-radius:3px;background:var(--buy);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+  .tile{border:1px solid var(--line);border-radius:3px;padding:11px 12px;background:var(--panel)}
+  .tile .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+  .tile .v{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:3px}
+
+  /* blotter */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:10px 14px;font-weight:700;background:#F1EEE6;border-bottom:1px solid var(--line)}
+  th.r,td.r{text-align:right}
+  td{padding:10px 14px;border-bottom:1px solid var(--line)} tr:last-child td{border-bottom:none}
+  tr.sel td{background:var(--goldbg)}
+  .id{color:var(--ink3)} .side-b{color:var(--buy);font-weight:700} .side-s{color:var(--sell);font-weight:700}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px 2px 6px;border-radius:3px;font-size:10.5px;font-weight:600;border:1px solid transparent}
+  .arc{width:10px;height:10px;border-radius:50%;flex:0 0 auto;border:1.5px solid}
+  .b-acc{color:var(--accepted);background:var(--acceptedbg);border-color:#CBD9E6} .b-acc .arc{border-color:var(--accepted)}
+  .b-par{color:var(--amber);background:var(--amberbg);border-color:#E7D5AF} .b-par .arc{border-color:var(--amber);background:conic-gradient(var(--amber) 45%,transparent 0)}
+  .b-fil{color:var(--buy);background:var(--buybg);border-color:#C4DED4} .b-fil .arc{border-color:var(--buy);background:var(--buy)}
+  .b-rej{color:var(--sell);background:var(--sellbg);border-color:#E8C9C3} .b-rej .arc{border-color:var(--sell)}
+  .cancel{font-size:10.5px;font-weight:600;color:var(--sell);background:transparent;border:1px solid #E0BDB6;border-radius:3px;padding:3px 8px;cursor:pointer}
+  .dash{color:var(--ink3)}
+
+  /* selected rail */
+  .selbar{margin-top:22px;border:1px solid var(--line);border-radius:4px;background:var(--panel);padding:16px 18px}
+  .selhead{display:flex;gap:10px;align-items:baseline;margin-bottom:16px}
+  .selhead .id{font-family:var(--mono);font-size:12px}.selhead .sym{font-weight:700}
+  .selhead .side{font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 6px;border-radius:2px;color:var(--buy);background:var(--buybg)}
+  .selhead .meta{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+  .rail{display:flex;align-items:flex-start}
+  .rn{display:flex;flex-direction:column;align-items:center;gap:8px;width:100px;flex:0 0 auto}
+  .sg{flex:1;height:2px;margin-top:11px;background:var(--line2);border-radius:2px;min-width:20px} .sg.done{background:var(--ink)}
+  .mk{width:24px;height:24px;border-radius:50%;border:1.75px solid var(--ink3);background:var(--paper);display:grid;place-items:center}
+  .mk.f{border-color:var(--buy);background:var(--buy)} .mk.f::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--paper)}
+  .mk.p{border-color:var(--amber);background:conic-gradient(var(--amber) 40%,transparent 0)}
+  .rn .nm{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;text-align:center}
+  .rn.on .nm{color:var(--ink)}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="wm">tradecore<span class="dot">.</span></span>
+    <nav class="nav"><span class="on">Orders</span><span>Positions</span><span>Activity</span></nav>
+    <span class="spacer"></span>
+    <div class="cash"><span class="k">Available cash</span><span class="v">₹9,99,500.00</span></div>
+    <div class="who"><span class="av">T1</span>trader1</div>
+  </div>
+
+  <div class="grid">
+    <div class="left">
+      <p class="eyebrow">New order · ACME</p>
+      <div class="seg"><button class="on-buy">BUY</button><button>SELL</button></div>
+      <div class="type"><button class="on">LIMIT</button><button>MARKET</button></div>
+      <div class="field">
+        <div class="cap"><span>Limit price</span><span>₹ / share</span></div>
+        <div class="affix"><span class="rup">₹</span><input class="input" value="100.00" /></div>
+      </div>
+      <div class="field">
+        <div class="cap"><span>Quantity</span><span>shares</span></div>
+        <input class="input plain" value="5" />
+      </div>
+      <button class="place">Buy 5 ACME · ₹500.00</button>
+
+      <div class="tiles">
+        <div class="tile"><div class="k">ACME held</div><div class="v">1,000</div></div>
+        <div class="tile"><div class="k">Working</div><div class="v">2</div></div>
+        <div class="tile"><div class="k">Reserved</div><div class="v">₹500.00</div></div>
+        <div class="tile"><div class="k">Filled today</div><div class="v">7</div></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <p class="eyebrow">Blotter</p>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Order</th><th>Side</th><th>Type</th><th class="r">Price</th><th class="r">Filled</th><th>Status</th><th class="r"></th></tr></thead>
+          <tbody>
+            <tr class="sel">
+              <td class="num id">#4217</td><td class="side-b">BUY</td><td>LIMIT</td><td class="r num">100.00</td><td class="r num">2 / 5</td>
+              <td><span class="badge b-par"><span class="arc"></span>Partial</span></td><td class="r"><button class="cancel">Cancel</button></td>
+            </tr>
+            <tr>
+              <td class="num id">#4216</td><td class="side-s">SELL</td><td>LIMIT</td><td class="r num">101.50</td><td class="r num">0 / 8</td>
+              <td><span class="badge b-acc"><span class="arc"></span>Accepted</span></td><td class="r"><button class="cancel">Cancel</button></td>
+            </tr>
+            <tr>
+              <td class="num id">#4212</td><td class="side-s">SELL</td><td>LIMIT</td><td class="r num">90.00</td><td class="r num">5 / 5</td>
+              <td><span class="badge b-fil"><span class="arc"></span>Filled</span></td><td class="r dash">—</td>
+            </tr>
+            <tr>
+              <td class="num id">#4205</td><td class="side-b">BUY</td><td>LIMIT</td><td class="r num">100.00</td><td class="r num">0 / 5</td>
+              <td><span class="badge b-rej"><span class="arc"></span>Rejected</span></td><td class="r dash">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="selbar">
+        <div class="selhead"><span class="id">#4217</span><span class="sym">ACME</span><span class="side">BUY</span><span class="meta">2 / 5 filled · reserving ₹300.00</span></div>
+        <div class="rail">
+          <div class="rn on"><div class="mk f"></div><div class="nm">New</div></div>
+          <div class="sg done"></div>
+          <div class="rn on"><div class="mk f"></div><div class="nm">Accepted</div></div>
+          <div class="sg done"></div>
+          <div class="rn on"><div class="mk p"></div><div class="nm">Partially filled</div></div>
+          <div class="sg"></div>
+          <div class="rn"><div class="mk"></div><div class="nm">Filled</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

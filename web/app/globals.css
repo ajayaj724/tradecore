@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f7f5f0;
+  --color-panel: #fffdf8;
+  --color-ink: #14181f;
+  --color-ink2: #5a616b;
+  --color-ink3: #8b9099;
+  --color-line: #e4dfd3;
+  --color-line2: #d3ccbc;
+  --color-buy: #0e7c66;
+  --color-buybg: #e7f1ed;
+  --color-sell: #c0392b;
+  --color-sellbg: #f7e7e4;
+  --color-gold: #9a7b2e;
+  --color-goldbg: #f1ead7;
+  --color-accepted: #2b5c8a;
+  --color-acceptedbg: #e3ebf2;
+  --color-amber: #b7791f;
+  --color-amberbg: #f4e9d4;
+  --color-muted: #8b8577;
+  --color-mutedbg: #ece8de;
+  --font-sans: "Helvetica Neue", Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--color-ink3);
+  font-weight: 700;
+}

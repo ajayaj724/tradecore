@@ -1,0 +1,99 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Foundations · tradecore OMS</title>
+<style>
+  :root{
+    --paper:#F7F5F0;--panel:#FFFDF8;--ink:#14181F;--ink2:#5A616B;--ink3:#8B9099;
+    --line:#E4DFD3;--line2:#D3CCBC;
+    --buy:#0E7C66;--buybg:#E7F1ED;--sell:#C0392B;--sellbg:#F7E7E4;
+    --gold:#9A7B2E;--goldbg:#F1EAD7;--accepted:#2B5C8A;--acceptedbg:#E3EBF2;
+    --amber:#B7791F;--amberbg:#F4E9D4;--muted:#8B8577;--mutedbg:#ECE8DE;
+    --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;padding:32px;max-width:960px}
+  .eyebrow{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);font-weight:700;margin:0 0 12px}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  h1{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0 0 2px}
+  .lede{color:var(--ink2);font-size:13px;margin:0 0 28px;max-width:60ch}
+  section{border-top:1px solid var(--line);padding:22px 0}
+  section:first-of-type{border-top:none;padding-top:0}
+  .sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .chip{border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel)}
+  .chip .fill{height:46px}
+  .chip .meta{padding:7px 9px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .chip .nm{font-size:11px;font-weight:600}
+  .chip .hex{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+  .scale > div{display:flex;align-items:baseline;gap:16px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .scale > div:last-child{border-bottom:none}
+  .scale .lbl{width:120px;flex:0 0 120px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+  .display{font-size:30px;font-weight:750;letter-spacing:-.025em}
+  .heading{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .body{font-size:14px} .caption{font-size:12px;color:var(--ink2)}
+  .money{display:flex;gap:34px;align-items:flex-end;flex-wrap:wrap}
+  .money .big{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em}
+  .money .rule{color:var(--ink2);font-size:12.5px;max-width:38ch;line-height:1.5}
+  .money .rup{color:var(--ink3)}
+  .buy{color:var(--buy)} .sell{color:var(--sell)} .gold{color:var(--gold)}
+</style>
+</head>
+<body>
+  <p class="eyebrow">tradecore · order management system</p>
+  <h1>Ledger Terminal — foundations</h1>
+  <p class="lede">A light, precise trading surface. Money is integer paise in the engine and only
+    becomes ₹ at the screen edge, so every figure is set in a tabular monospace and aligns to the
+    decimal. Buy and sell are the two poles of the whole language.</p>
+
+  <section>
+    <p class="eyebrow">Palette</p>
+    <div class="sw">
+      <div class="chip"><div class="fill" style="background:#F7F5F0"></div><div class="meta"><span class="nm">paper</span><span class="hex">#F7F5F0</span></div></div>
+      <div class="chip"><div class="fill" style="background:#FFFDF8"></div><div class="meta"><span class="nm">panel</span><span class="hex">#FFFDF8</span></div></div>
+      <div class="chip"><div class="fill" style="background:#14181F"></div><div class="meta"><span class="nm">ink</span><span class="hex">#14181F</span></div></div>
+      <div class="chip"><div class="fill" style="background:#E4DFD3"></div><div class="meta"><span class="nm">hairline</span><span class="hex">#E4DFD3</span></div></div>
+      <div class="chip"><div class="fill" style="background:#0E7C66"></div><div class="meta"><span class="nm">buy</span><span class="hex">#0E7C66</span></div></div>
+      <div class="chip"><div class="fill" style="background:#C0392B"></div><div class="meta"><span class="nm">sell</span><span class="hex">#C0392B</span></div></div>
+      <div class="chip"><div class="fill" style="background:#9A7B2E"></div><div class="meta"><span class="nm">accent · gold</span><span class="hex">#9A7B2E</span></div></div>
+      <div class="chip"><div class="fill" style="background:#2B5C8A"></div><div class="meta"><span class="nm">accepted</span><span class="hex">#2B5C8A</span></div></div>
+      <div class="chip"><div class="fill" style="background:#B7791F"></div><div class="meta"><span class="nm">partial</span><span class="hex">#B7791F</span></div></div>
+      <div class="chip"><div class="fill" style="background:#8B8577"></div><div class="meta"><span class="nm">cancelled</span><span class="hex">#8B8577</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Type scale</p>
+    <div class="scale">
+      <div><span class="lbl">Display / 30</span><span class="display">Place order</span></div>
+      <div><span class="lbl">Heading / 17</span><span class="heading">Working orders</span></div>
+      <div><span class="lbl">Body / 14</span><span class="body">A market order fills what it can and cancels the rest.</span></div>
+      <div><span class="lbl">Caption / 12</span><span class="caption">Reserved against available cash</span></div>
+      <div><span class="lbl">Data / mono</span><span class="num" style="font-size:15px">ACME · 100.00 × 5 · #4217</span></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Numerals — the decimal always lands</p>
+    <div class="money">
+      <div>
+        <div class="big"><span class="rup">₹</span>10,00,000.00</div>
+        <div class="caption" style="margin-top:4px">available cash · lakh grouping</div>
+      </div>
+      <div>
+        <div class="big buy">+₹45,000.00</div>
+        <div class="caption" style="margin-top:4px">buy 5 @ ₹90.00</div>
+      </div>
+      <div>
+        <div class="big sell">−₹45,000.00</div>
+        <div class="caption" style="margin-top:4px">sell counterparty</div>
+      </div>
+      <p class="rule">Tabular figures mean a column of prices reads like a ledger: the decimal points
+        stack, and 100.00 over 99.50 lines up digit for digit.</p>
+    </div>
+  </section>
+</body>
+</html>

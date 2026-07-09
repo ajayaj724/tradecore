@@ -4,6 +4,8 @@ import io.github.ajayaj724.tradecore.execution.engine.Fill;
 import io.github.ajayaj724.tradecore.execution.engine.MatchingEngine;
 import io.github.ajayaj724.tradecore.execution.engine.Side;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
+import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
+import io.github.ajayaj724.tradecore.shared.OrderCancelled;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -38,9 +40,18 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
         submit(order);
     }
 
+    @ApplicationModuleListener
+    void onCancel(OrderCancelRequested request) {
+        cancel(request);
+    }
+
     @Override
     public List<TradeExecuted> submit(OrderAccepted order) {
         if (alreadyProcessed(order.eventId())) {
+            return List.of();
+        }
+        if (isCancelled(order.orderId())) {
+            markProcessed(order.eventId()); // a cancel reached us first — do not rest this order
             return List.of();
         }
         rememberAccount(order.orderId(), order.account());
@@ -65,6 +76,29 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
         return trades;
     }
 
+    /**
+     * Remove an order's resting remainder from the book and answer with {@link OrderCancelled}. The
+     * {@code cancelled_order} marker is written first so an OrderAccepted that has not yet been
+     * processed (the cancel-before-accept race) will be refused a resting slot by {@link #submit}.
+     */
+    @Override
+    public void cancel(OrderCancelRequested request) {
+        if (alreadyProcessed(request.eventId())) {
+            return;
+        }
+        markCancelled(request.orderId());
+        long cancelledQty = engine.cancel(request.symbol(), request.orderId());
+        markProcessed(request.eventId());
+        events.publishEvent(new OrderCancelled(
+                UUID.randomUUID(),
+                request.orderId(),
+                request.account(),
+                request.symbol(),
+                request.side(),
+                cancelledQty,
+                clock.instant()));
+    }
+
     private static Side engineSide(io.github.ajayaj724.tradecore.shared.Side side) {
         return side == io.github.ajayaj724.tradecore.shared.Side.BUY ? Side.BUY : Side.SELL;
     }
@@ -80,6 +114,22 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
     private void markProcessed(UUID eventId) {
         jdbc.sql("insert into execution.processed_event (event_id, processed_at) values (:id, :t)")
                 .param("id", eventId)
+                .param("t", OffsetDateTime.now(clock))
+                .update();
+    }
+
+    private boolean isCancelled(long orderId) {
+        return jdbc.sql("select count(*) from execution.cancelled_order where order_id = :o")
+                        .param("o", orderId)
+                        .query(Long.class)
+                        .single()
+                > 0;
+    }
+
+    private void markCancelled(long orderId) {
+        jdbc.sql("insert into execution.cancelled_order (order_id, cancelled_at) values (:o, :t)"
+                        + " on conflict (order_id) do nothing")
+                .param("o", orderId)
                 .param("t", OffsetDateTime.now(clock))
                 .update();
     }

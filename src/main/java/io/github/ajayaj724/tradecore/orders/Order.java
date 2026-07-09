@@ -36,4 +36,8 @@ record Order(
         OrderStatus next = total >= quantity ? OrderStatus.FILLED : OrderStatus.PARTIALLY_FILLED;
         return new Order(id, account, symbol, side, price, quantity, total, next, null, version);
     }
+
+    Order cancelled() {
+        return new Order(id, account, symbol, side, price, quantity, filledQty, OrderStatus.CANCELLED, null, version);
+    }
 }

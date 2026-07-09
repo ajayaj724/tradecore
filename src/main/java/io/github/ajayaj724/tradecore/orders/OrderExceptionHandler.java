@@ -21,4 +21,11 @@ class OrderExceptionHandler {
         problem.setTitle("Order not found");
         return problem;
     }
+
+    @ExceptionHandler(OrderNotCancellableException.class)
+    ProblemDetail handleNotCancellable(OrderNotCancellableException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Order not cancellable");
+        return problem;
+    }
 }

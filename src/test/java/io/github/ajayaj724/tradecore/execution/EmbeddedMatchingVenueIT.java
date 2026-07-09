@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
+import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Instant;
@@ -34,6 +35,10 @@ class EmbeddedMatchingVenueIT {
         return new OrderAccepted(UUID.randomUUID(), id, "trader1", symbol, side, price, qty, Instant.EPOCH);
     }
 
+    private static OrderCancelRequested cancelRequest(long id, Side side, String symbol) {
+        return new OrderCancelRequested(UUID.randomUUID(), id, "trader1", symbol, side, Instant.EPOCH);
+    }
+
     @Test
     void crossingOrdersProduceATrade() {
         venue.submit(accepted(101L, Side.SELL, 10000L, 5L, "ZZZ")); // rests
@@ -59,5 +64,42 @@ class EmbeddedMatchingVenueIT {
                 .query(Long.class)
                 .single();
         assertThat(count).isEqualTo(1L);
+    }
+
+    @Test
+    void cancelRemovesTheRestingRemainderFromTheBook() {
+        venue.submit(accepted(301L, Side.SELL, 10000L, 5L, "CXA")); // rests as an ask
+
+        venue.cancel(cancelRequest(301L, Side.SELL, "CXA"));
+
+        // The resting ask is gone, so a would-be crossing buy finds nothing to fill.
+        List<TradeExecuted> trades = venue.submit(accepted(302L, Side.BUY, 10000L, 5L, "CXA"));
+        assertThat(trades).isEmpty();
+    }
+
+    @Test
+    void redeliveryOfSameCancelRequestIsANoOp() {
+        venue.submit(accepted(311L, Side.SELL, 10000L, 5L, "CXB"));
+        OrderCancelRequested request = cancelRequest(311L, Side.SELL, "CXB");
+
+        venue.cancel(request);
+        venue.cancel(request); // same eventId → deduped
+
+        Long count = jdbc.sql("select count(*) from execution.processed_event where event_id = :id")
+                .param("id", request.eventId())
+                .query(Long.class)
+                .single();
+        assertThat(count).isEqualTo(1L);
+    }
+
+    @Test
+    void anAcceptThatArrivesAfterItsCancelDoesNotRest() {
+        // Cancel is processed before the accept (the cancel-before-accept race): it leaves a marker.
+        venue.cancel(cancelRequest(321L, Side.SELL, "CXC"));
+        venue.submit(accepted(321L, Side.SELL, 10000L, 5L, "CXC")); // late accept must be skipped
+
+        // Since 321 never rested, a crossing buy produces no trade.
+        List<TradeExecuted> trades = venue.submit(accepted(322L, Side.BUY, 10000L, 5L, "CXC"));
+        assertThat(trades).isEmpty();
     }
 }

@@ -109,12 +109,33 @@ check_risk_rejects_insufficient_cash() {
   expect_body "the over-cash order is REJECTED" '"status":"REJECTED"'
 }
 
+check_cancel_releases_a_resting_order() {
+  local t1 order_id i
+  t1=$(scripts/token.sh trader1)
+  # a BUY at 1 paise never crosses, so it rests as ACCEPTED and is cancellable
+  call POST /api/v1/orders "$t1" '{"symbol":"ACME","side":"BUY","price":1,"quantity":1}'
+  expect_status "a resting buy is accepted" 201
+  expect_body "the resting buy is ACCEPTED" '"status":"ACCEPTED"'
+  order_id=$(sed -n 's/.*"id":\([0-9]*\).*/\1/p' <<<"$BODY")
+  call POST "/api/v1/orders/$order_id/cancel" "$t1"
+  expect_status "the cancellation is accepted (202, async)" 202
+  # cancellation is event-driven, so poll for the terminal CANCELLED state
+  for i in $(seq 1 20); do
+    call GET "/api/v1/orders/$order_id" "$t1"
+    grep -qF '"status":"CANCELLED"' <<<"$BODY" && break
+    sleep 0.5
+  done
+  expect_status "the cancelled order is readable by its owner" 200
+  expect_body "the buy reached CANCELLED (async release)" '"status":"CANCELLED"'
+}
+
 RUN_CHECKS=(
   check_health_is_public
   check_unauthenticated_is_problem_json_401
   check_openapi_and_swagger_are_public
   check_prometheus_scrape_is_public
   check_order_fills_end_to_end
+  check_cancel_releases_a_resting_order
   check_risk_rejects_insufficient_cash
 )
 

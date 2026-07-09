@@ -41,6 +41,14 @@ class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.from(order));
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('TRADER')")
+    ResponseEntity<OrderResponse> cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
+        // 202: cancellation is accepted for async processing; the order reaches CANCELLED via event.
+        return ResponseEntity.accepted().body(OrderResponse.from(service.cancel(id, account, account)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TRADER','OPS')")
     ResponseEntity<OrderResponse> get(

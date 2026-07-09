@@ -2,6 +2,7 @@ package io.github.ajayaj724.tradecore.risk;
 
 import io.github.ajayaj724.tradecore.shared.CashPosted;
 import io.github.ajayaj724.tradecore.shared.HoldingsPosted;
+import io.github.ajayaj724.tradecore.shared.OrderCancelled;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
@@ -119,6 +120,26 @@ public class RiskService {
                 .param("o", trade.sellOrderId())
                 .update();
         markProcessed(trade.eventId());
+    }
+
+    /**
+     * Release the full remaining hold for a cancelled order. The hold's {@code remaining_qty} already
+     * tracks only the unfilled reservation (fills decrement it in {@link #releaseHold}), so deleting
+     * by {@code order_id} credits back exactly the unused amount. Only one of the two holds exists for
+     * a given order — the other delete is a harmless no-op.
+     */
+    @Transactional
+    public void releaseOnCancel(OrderCancelled event) {
+        if (alreadyProcessed(event.eventId())) {
+            return;
+        }
+        jdbc.sql("delete from risk.cash_hold where order_id = :o")
+                .param("o", event.orderId())
+                .update();
+        jdbc.sql("delete from risk.holdings_hold where order_id = :o")
+                .param("o", event.orderId())
+                .update();
+        markProcessed(event.eventId());
     }
 
     /** Read-model update: settled holdings fed by portfolio's signed-delta HoldingsPosted events. */

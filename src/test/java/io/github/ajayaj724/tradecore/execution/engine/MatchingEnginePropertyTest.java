@@ -7,8 +7,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import net.jqwik.api.Arbitraries;
 import net.jqwik.api.Arbitrary;
+import net.jqwik.api.Assume;
 import net.jqwik.api.Combinators;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
@@ -75,6 +77,82 @@ class MatchingEnginePropertyTest {
             long open = engine.openQuantity("ACME", in.orderId());
             assertThat(filled.getOrDefault(in.orderId(), 0L) + open).isEqualTo(in.quantity());
         }
+    }
+
+    @Property
+    void cancellingRestingOrderFreesExactlyItsQuantityAndLeavesOthersUntouched(
+            @ForAll("orderSequences") List<Input> inputs) {
+        MatchingEngine engine = new MatchingEngine();
+        inputs.forEach(in -> engine.submit("ACME", in.orderId(), in.side(), in.price(), in.quantity()));
+
+        OptionalLong stillResting = inputs.stream()
+                .mapToLong(Input::orderId)
+                .filter(id -> engine.openQuantity("ACME", id) > 0)
+                .findFirst();
+        Assume.that(stillResting.isPresent());
+        long target = stillResting.getAsLong();
+
+        long targetOpenBefore = engine.openQuantity("ACME", target);
+        Map<Long, Long> openBefore = new HashMap<>();
+        inputs.forEach(in -> openBefore.put(in.orderId(), engine.openQuantity("ACME", in.orderId())));
+
+        long cancelled = engine.cancel("ACME", target);
+
+        assertThat(cancelled).isEqualTo(targetOpenBefore);
+        assertThat(engine.openQuantity("ACME", target)).isZero();
+        for (Input in : inputs) {
+            if (in.orderId() == target) {
+                continue;
+            }
+            assertThat(engine.openQuantity("ACME", in.orderId())).isEqualTo(openBefore.get(in.orderId()));
+        }
+        // The book still never crosses after the removal.
+        if (engine.bestBid("ACME").isPresent() && engine.bestAsk("ACME").isPresent()) {
+            assertThat(engine.bestBid("ACME").getAsLong())
+                    .isLessThan(engine.bestAsk("ACME").getAsLong());
+        }
+    }
+
+    @Property
+    void cancelOfUnknownOrderReturnsZeroAndConservesTheBook(@ForAll("orderSequences") List<Input> inputs) {
+        MatchingEngine engine = new MatchingEngine();
+        inputs.forEach(in -> engine.submit("ACME", in.orderId(), in.side(), in.price(), in.quantity()));
+        long totalOpenBefore = inputs.stream()
+                .mapToLong(in -> engine.openQuantity("ACME", in.orderId()))
+                .sum();
+
+        assertThat(engine.cancel("ACME", 999_999L)).isZero(); // id never submitted (ids run 1..40)
+        assertThat(engine.cancel("NO_SUCH_SYMBOL", 1L)).isZero(); // book never created
+
+        long totalOpenAfter = inputs.stream()
+                .mapToLong(in -> engine.openQuantity("ACME", in.orderId()))
+                .sum();
+        assertThat(totalOpenAfter).isEqualTo(totalOpenBefore);
+    }
+
+    @Property
+    void filledPlusCancelledEqualsSubmittedForACancelledOrder(@ForAll("orderSequences") List<Input> inputs) {
+        MatchingEngine engine = new MatchingEngine();
+        Map<Long, Long> filled = new HashMap<>();
+        Map<Long, Long> submitted = new HashMap<>();
+        for (Input in : inputs) {
+            submitted.put(in.orderId(), in.quantity());
+            for (Fill f : engine.submit("ACME", in.orderId(), in.side(), in.price(), in.quantity())) {
+                filled.merge(f.buyOrderId(), f.quantity(), Long::sum);
+                filled.merge(f.sellOrderId(), f.quantity(), Long::sum);
+            }
+        }
+        OptionalLong stillResting = inputs.stream()
+                .mapToLong(Input::orderId)
+                .filter(id -> engine.openQuantity("ACME", id) > 0)
+                .findFirst();
+        Assume.that(stillResting.isPresent());
+        long target = stillResting.getAsLong();
+
+        long cancelled = engine.cancel("ACME", target);
+
+        // Conservation: nothing filled is lost, nothing is created — filled + cancelled = original size.
+        assertThat(filled.getOrDefault(target, 0L) + cancelled).isEqualTo(submitted.get(target));
     }
 
     @Property

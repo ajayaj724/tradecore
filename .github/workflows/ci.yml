@@ -38,6 +38,8 @@ jobs:
 
   gitleaks:
     runs-on: ubuntu-latest
+    # pull-requests: write lets the action post its PR summary; without it, PR runs 404 on the API.
+    permissions: {contents: read, pull-requests: write}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with: {fetch-depth: 0}

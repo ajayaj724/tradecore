@@ -139,20 +139,27 @@ by sibling ITs; assert deltas/known values, per the 2C test-isolation lesson).
   is internal to the module and communicates outward only via the existing `PriceUpdated` event, so
   `ApplicationModules.verify()` is unaffected.
 
-## 8. Dependencies & the one real risk
+## 8. Dependencies (risk retired by spike — 2026-07-09)
+
+The load-bearing unknown — "does Resilience4j work on Boot 4.1?" — was **settled by a throwaway
+spike**: on Boot 4.1 / Java 25 the circuit breaker autoconfigured, opened after failures,
+short-circuited to its fallback, and published Micrometer metrics (`BUILD SUCCESS`). The core-decorator
+hedge is **not** needed. Confirmed working set:
 
 - **`RestClient`** — Spring-managed (`spring-web`), no new dependency.
-- **Resilience4j** — new. ⚠️ **Boot 4.1 (Framework 7 / Jakarta EE 11) compatibility of the
-  Resilience4j *Spring Boot starter* is unverified.** The plan MUST verify a GA version against the
-  official source at implementation time (repo1 maven-metadata / release notes; Context7), latest
-  stable GA only. **Hedge:** if the Spring starter does not yet support Boot 4.1, use Resilience4j
-  **core** programmatically (`CircuitBreaker`/`Retry`/`TimeLimiter` decorators around the
-  `RestClient` call, wired in a `@Configuration`) — framework-agnostic, no starter, identical
-  behavior and identical Micrometer metrics via the core `TaggedCircuitBreakerMetrics` binder. The
-  spec is agnostic to which of the two lands; the plan picks based on the verification.
-- **WireMock** — new, **test scope** only. Justify in the PR; passes OWASP/Trivy.
-- All new dependencies: no version pinned that the Boot BOM manages; any explicit version verified
-  against the official source at commit time (CLAUDE.md).
+- **`io.github.resilience4j:resilience4j-spring-boot4:2.4.0`** — the purpose-built Boot 4 starter
+  (verified latest GA on Maven Central; transitively pulls `resilience4j-spring6`, `-annotations`,
+  `-micrometer`). The **annotation-driven** path works: `@CircuitBreaker`/`@Retry`/`@TimeLimiter`
+  with `fallbackMethod`, thresholds via `resilience4j.circuitbreaker.instances.<name>.*` properties.
+- **`org.aspectj:aspectjweaver`** (BOM-managed — no explicit version) — **REQUIRED**. Resilience4j's
+  annotations are `@Aspect`-based, and **`spring-boot-starter-aop` has no 4.x GA (only `4.0.0-M2`)**,
+  so it is not in the Boot 4.1 BOM. Adding `aspectjweaver` directly is what activates Boot's AOP
+  autoproxy so the aspects weave. Symptom if omitted: the aspect silently doesn't fire and the raw
+  method throws (verified — this was the spike's first failure mode).
+- **WireMock** — new, **test scope**. Use the **3.x GA** line, NOT `4.0.0-beta.*` (Central's latest is
+  a beta); pin the exact 3.x `<release>` at plan time. Justify in the PR; passes OWASP/Trivy.
+- No version pinned that the Boot BOM manages; any explicit version (e.g. resilience4j `2.4.0`)
+  verified against the official source at commit time (CLAUDE.md).
 
 ## 9. Testing strategy summary
 
@@ -162,8 +169,9 @@ behavior (happy, timeout, circuit-open, recovery); event-propagation assertions 
 
 ## 10. Task breakdown (dependency order — for the plan)
 
-1. **Dependency + version verification** — resolve the Resilience4j path (Spring starter vs. core)
-   against Boot 4.1; add deps; ADR for the choice. WireMock test dep.
+1. **Dependencies** — add the spike-verified set: `resilience4j-spring-boot4:2.4.0` +
+   `org.aspectj:aspectjweaver` (BOM-managed) + WireMock 3.x (test scope, pin exact GA); ADR
+   recording the annotation-driven-starter choice and the `spring-boot-starter-aop` no-GA gotcha.
 2. **`UpstoxClient`** — `RestClient` wrapper + DTO→paise conversion (unit test first).
 3. **Resilience4j decoration** — TimeLimiter/Retry/CircuitBreaker + fallback around the client
    (config-driven thresholds).
@@ -177,8 +185,8 @@ behavior (happy, timeout, circuit-open, recovery); event-propagation assertions 
 
 - **Market-data via a resilient external adapter** — pull/poll behind Resilience4j; retain-last-known
   fallback; last-writer-wins coexistence with internal-trade prices.
-- **Resilience4j integration approach** — Spring Boot starter vs. core decorators, decided by the
-  Boot 4.1 compatibility verification (§8).
+- **Resilience4j integration approach** — annotation-driven via `resilience4j-spring-boot4:2.4.0` +
+  `aspectjweaver` (spike-verified, §8); records the `spring-boot-starter-aop` no-4.x-GA gotcha.
 
 ## 12. Definition of done
 

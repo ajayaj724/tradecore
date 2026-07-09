@@ -59,4 +59,22 @@ class OrderFillListenerIT {
 
         assertThat(orders.findById(buyId).orElseThrow().filledQty()).isEqualTo(3L); // once, not 6
     }
+
+    @Test
+    void fillDeliveredAfterACancelBooksTheQuantityButKeepsCancelled() {
+        // A market IOC (or a cancel) already finalised the buy as CANCELLED; a TradeExecuted delivered
+        // afterwards must book the filled quantity without resurrecting the order.
+        long sellId = insertAccepted("trader2", Side.SELL);
+        Order cancelledBuy =
+                new Order(null, "trader1", "ACME", Side.BUY, 10000L, 5L, 0, OrderStatus.CANCELLED, null, null);
+        long buyId = Objects.requireNonNull(orders.save(cancelledBuy).id());
+        TradeExecuted trade = new TradeExecuted(
+                UUID.randomUUID(), buyId, sellId, "trader1", "trader2", "ACME", 10000L, 3L, Instant.EPOCH);
+
+        service.applyTrade(trade);
+
+        Order after = orders.findById(buyId).orElseThrow();
+        assertThat(after.status()).isEqualTo(OrderStatus.CANCELLED); // not resurrected
+        assertThat(after.filledQty()).isEqualTo(3L); // but the fill is booked
+    }
 }

@@ -15,10 +15,23 @@ public final class MatchingEngine {
     private final Map<String, OrderBook> books = new HashMap<>();
 
     public synchronized List<Fill> submit(String symbol, long orderId, Side side, long limitPrice, long quantity) {
+        return submit(symbol, orderId, side, limitPrice, quantity, true);
+    }
+
+    /**
+     * Immediate-or-cancel: match against available liquidity and drop any unfilled remainder instead
+     * of resting it. Used for market orders (a marketable-limit capped at {@code limitPrice}). Atomic
+     * under the engine lock, so the remainder is never briefly visible to a concurrent order.
+     */
+    public synchronized List<Fill> submitIoc(String symbol, long orderId, Side side, long limitPrice, long quantity) {
+        return submit(symbol, orderId, side, limitPrice, quantity, false);
+    }
+
+    private List<Fill> submit(String symbol, long orderId, Side side, long limitPrice, long quantity, boolean rest) {
         if (limitPrice <= 0 || quantity <= 0) {
             throw new IllegalArgumentException("price and quantity must be positive");
         }
-        return books.computeIfAbsent(symbol, s -> new OrderBook()).submit(orderId, side, limitPrice, quantity);
+        return books.computeIfAbsent(symbol, s -> new OrderBook()).submit(orderId, side, limitPrice, quantity, rest);
     }
 
     public synchronized long cancel(String symbol, long orderId) {

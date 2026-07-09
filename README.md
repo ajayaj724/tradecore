@@ -201,7 +201,7 @@ is up (or with `--e2e`):
 | Layer | What it is | Runs |
 |---|---|---|
 | **In-process suite** (authoritative regression) | Every unit + Testcontainers integration test + the jqwik engine property test, behind the full quality gate (Spotless, Error Prone/NullAway, Checkstyle, PMD, ArchUnit + `ApplicationModules.verify()`, 80% coverage). | `scripts/gate.sh` (`mvn verify`) — every commit / CI |
-| **End-to-end smoke suite** | Black-box HTTP assertions against the **running** app (real Keycloak tokens, real filter chain, real matching path): health/auth/OpenAPI/Prometheus public-vs-401, an order filling end-to-end, an order cancelled end-to-end, a risk rejection. | `scripts/smoke.sh` (needs `scripts/up.sh` + `scripts/run.sh`) |
+| **End-to-end smoke suite** | Black-box HTTP assertions against the **running** app (real Keycloak tokens, real filter chain, real matching path): health/auth/OpenAPI/Prometheus public-vs-401, an order filling end-to-end, an order cancelled end-to-end, a market order as immediate-or-cancel, a risk rejection. | `scripts/smoke.sh` (needs `scripts/up.sh` + `scripts/run.sh`) |
 | **Performance suites** (on demand, not every run) | Gatling load test + published SLOs; JMH engine benchmarks. | `mvn -Pgatling …` · `mvn -Pjmh …` |
 
 ```bash

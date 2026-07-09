@@ -80,4 +80,23 @@ class MatchingEngineTest {
         assertThat(engine.openQuantity("ACME", 2L)).isZero();
         assertThat(engine.bestBid("ACME")).isEmpty();
     }
+
+    @Test
+    void immediateOrCancelFillsWhatItCanAndRestsNothing() {
+        engine.submit("ACME", 1L, Side.SELL, 10000L, 3L); // resting ask, qty 3
+        List<Fill> fills = engine.submitIoc("ACME", 2L, Side.BUY, 10500L, 5L); // wants 5, only 3 available
+
+        assertThat(fills).containsExactly(new Fill(2L, 1L, 10000L, 3L)); // filled the 3 that existed
+        assertThat(engine.openQuantity("ACME", 2L)).isZero(); // the unfilled 2 is dropped, not rested
+        assertThat(engine.bestBid("ACME")).isEmpty();
+    }
+
+    @Test
+    void immediateOrCancelWithNoLiquidityFillsAndRestsNothing() {
+        List<Fill> fills = engine.submitIoc("ACME", 1L, Side.BUY, 10000L, 5L); // empty book
+
+        assertThat(fills).isEmpty();
+        assertThat(engine.openQuantity("ACME", 1L)).isZero();
+        assertThat(engine.bestBid("ACME")).isEmpty();
+    }
 }

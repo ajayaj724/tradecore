@@ -18,10 +18,11 @@ class EventContractsTest {
     }
 
     @Test
-    void orderAcceptedCarriesSideAndAccount() {
-        OrderAccepted a =
-                new OrderAccepted(UUID.randomUUID(), 7L, "trader1", "ACME", Side.BUY, 10000L, 5L, Instant.EPOCH);
+    void orderAcceptedCarriesSideAccountAndType() {
+        OrderAccepted a = new OrderAccepted(
+                UUID.randomUUID(), 7L, "trader1", "ACME", Side.BUY, OrderType.MARKET, 10000L, 5L, Instant.EPOCH);
         assertThat(a.side()).isEqualTo(Side.BUY);
         assertThat(a.account()).isEqualTo("trader1");
+        assertThat(a.type()).isEqualTo(OrderType.MARKET);
     }
 }

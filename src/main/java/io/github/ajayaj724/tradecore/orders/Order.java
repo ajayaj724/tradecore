@@ -40,4 +40,9 @@ record Order(
     Order cancelled() {
         return new Order(id, account, symbol, side, price, quantity, filledQty, OrderStatus.CANCELLED, null, version);
     }
+
+    /** Book a fill without changing status — for a fill that arrives after the order is CANCELLED. */
+    Order withFillKeepingStatus(long addQty) {
+        return new Order(id, account, symbol, side, price, quantity, filledQty + addQty, status, rejectReason, version);
+    }
 }

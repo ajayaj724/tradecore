@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
@@ -32,7 +33,8 @@ class OrderMetricsIT {
         orders.submit(
                 "trader1",
                 "trader1",
-                new SubmitOrderCommand("k-" + java.util.UUID.randomUUID(), "ACME", Side.BUY, 100L, 1L));
+                new SubmitOrderCommand(
+                        "k-" + java.util.UUID.randomUUID(), "ACME", Side.BUY, 100L, 1L, OrderType.LIMIT));
         assertThat(registry.counter("tradecore.orders.submitted").count()).isEqualTo(before + 1);
     }
 
@@ -42,7 +44,8 @@ class OrderMetricsIT {
         orders.submit(
                 "trader1",
                 "trader1",
-                new SubmitOrderCommand("k-" + java.util.UUID.randomUUID(), "ACME", Side.BUY, 100L, 2_000_000L));
+                new SubmitOrderCommand(
+                        "k-" + java.util.UUID.randomUUID(), "ACME", Side.BUY, 100L, 2_000_000L, OrderType.LIMIT));
         assertThat(registry.get("tradecore.risk.rejections")
                         .tag("reason", "insufficient cash")
                         .counter()
@@ -56,9 +59,13 @@ class OrderMetricsIT {
         // A matching SELL + BUY on ACME cross at 100 -> engine produces a fill -> both orders reach
         // FILLED -> recordFillLatency looks up each order's SUBMITTED audit row and records the timer.
         orders.submit(
-                "trader2", "trader2", new SubmitOrderCommand("k-" + UUID.randomUUID(), "ACME", Side.SELL, 100L, 1L));
+                "trader2",
+                "trader2",
+                new SubmitOrderCommand("k-" + UUID.randomUUID(), "ACME", Side.SELL, 100L, 1L, OrderType.LIMIT));
         orders.submit(
-                "trader1", "trader1", new SubmitOrderCommand("k-" + UUID.randomUUID(), "ACME", Side.BUY, 100L, 1L));
+                "trader1",
+                "trader1",
+                new SubmitOrderCommand("k-" + UUID.randomUUID(), "ACME", Side.BUY, 100L, 1L, OrderType.LIMIT));
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(
                         registry.get("tradecore.order.fill.latency").timer().count())
                 .isGreaterThan(before));

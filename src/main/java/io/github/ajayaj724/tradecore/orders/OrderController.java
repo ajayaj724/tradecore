@@ -37,7 +37,12 @@ class OrderController {
                 account,
                 account,
                 new SubmitOrderCommand(
-                        idempotencyKey, request.symbol(), request.side(), request.price(), request.quantity()));
+                        idempotencyKey,
+                        request.symbol(),
+                        request.side(),
+                        request.price(),
+                        request.quantity(),
+                        request.typeOrDefault()));
         return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.from(order));
     }
 

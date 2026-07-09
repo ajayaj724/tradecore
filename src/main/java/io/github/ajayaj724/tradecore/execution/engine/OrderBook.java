@@ -21,10 +21,11 @@ final class OrderBook {
     private final NavigableMap<Long, Deque<RestingOrder>> asks = new TreeMap<>();
 
     /**
-     * Match an incoming LIMIT order against the opposite side by price-time priority, printing each
-     * trade at the resting (maker) order's price, then rest any unfilled remainder on its own side.
+     * Match an incoming order against the opposite side by price-time priority, printing each trade at
+     * the resting (maker) order's price. When {@code rest} is true (a LIMIT order) any unfilled
+     * remainder rests on its own side; when false (immediate-or-cancel) the remainder is dropped.
      */
-    List<Fill> submit(long orderId, Side side, long limitPrice, long quantity) {
+    List<Fill> submit(long orderId, Side side, long limitPrice, long quantity, boolean rest) {
         List<Fill> fills = new ArrayList<>();
         long remaining = quantity;
         NavigableMap<Long, Deque<RestingOrder>> opposite = side == Side.BUY ? asks : bids;
@@ -43,7 +44,7 @@ final class OrderBook {
                 }
             }
         }
-        if (remaining > 0) {
+        if (rest && remaining > 0) {
             own(side)
                     .computeIfAbsent(limitPrice, p -> new ArrayDeque<>())
                     .addLast(new RestingOrder(orderId, limitPrice, remaining));

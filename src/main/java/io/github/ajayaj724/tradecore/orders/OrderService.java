@@ -6,6 +6,7 @@ import io.github.ajayaj724.tradecore.shared.OrderAccepted;
 import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
 import io.github.ajayaj724.tradecore.shared.OrderCancelled;
 import io.github.ajayaj724.tradecore.shared.OrderRejected;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -79,7 +80,7 @@ class OrderService {
                 Objects.requireNonNull(created.id()), account, cmd.side(), cmd.symbol(), cmd.price(), cmd.quantity());
         return switch (decision) {
             case RiskDecision.Rejected r -> reject(created, r.reason(), principal);
-            case RiskDecision.Approved ignored -> accept(created, principal);
+            case RiskDecision.Approved ignored -> accept(created, principal, cmd.type());
         };
     }
 
@@ -108,7 +109,7 @@ class OrderService {
         return order;
     }
 
-    private Order accept(Order order, String principal) {
+    private Order accept(Order order, String principal, OrderType type) {
         Order accepted = orders.save(order.accepted());
         record(accepted, "ACCEPTED", principal);
         events.publishEvent(new OrderAccepted(
@@ -117,6 +118,7 @@ class OrderService {
                 accepted.account(),
                 accepted.symbol(),
                 accepted.side(),
+                type,
                 accepted.price(),
                 accepted.quantity(),
                 clock.instant()));
@@ -193,6 +195,13 @@ class OrderService {
 
     private void applyToOrder(long orderId, long quantity, Instant filledAt) {
         Order order = orders.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (order.status() == OrderStatus.CANCELLED) {
+            // A cancel already finalised this order (e.g. a market IOC remainder, or a cancel that beat
+            // the fill). Book the quantity for accuracy, but CANCELLED is terminal — do not resurrect it.
+            Order booked = orders.save(order.withFillKeepingStatus(quantity));
+            record(booked, booked.status().name(), "system");
+            return;
+        }
         Order filled = orders.save(order.withFill(quantity));
         record(filled, filled.status().name(), "system");
         if (filled.status() == OrderStatus.FILLED) {

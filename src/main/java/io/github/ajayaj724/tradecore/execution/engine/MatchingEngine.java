@@ -21,6 +21,11 @@ public final class MatchingEngine {
         return books.computeIfAbsent(symbol, s -> new OrderBook()).submit(orderId, side, limitPrice, quantity);
     }
 
+    public synchronized long cancel(String symbol, long orderId) {
+        OrderBook book = books.get(symbol);
+        return book == null ? 0 : book.cancel(orderId);
+    }
+
     public synchronized OptionalLong bestBid(String symbol) {
         OrderBook book = books.get(symbol);
         return book == null ? OptionalLong.empty() : book.bestBid();

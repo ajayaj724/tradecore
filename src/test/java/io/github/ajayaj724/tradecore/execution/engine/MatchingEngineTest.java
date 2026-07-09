@@ -48,4 +48,36 @@ class MatchingEngineTest {
         assertThat(fills).containsExactly(new Fill(1L, 3L, 10000L, 5L)); // order 1 filled, not 2
         assertThat(engine.openQuantity("ACME", 2L)).isEqualTo(5L);
     }
+
+    @Test
+    void cancelRemovesRestingOrderAndReturnsItsQuantity() {
+        engine.submit("ACME", 1L, Side.BUY, 9900L, 5L); // rests as a bid
+
+        long cancelled = engine.cancel("ACME", 1L);
+
+        assertThat(cancelled).isEqualTo(5L);
+        assertThat(engine.openQuantity("ACME", 1L)).isZero();
+        assertThat(engine.bestBid("ACME")).isEmpty(); // price level cleaned up
+    }
+
+    @Test
+    void cancelOfUnknownOrderReturnsZeroAndTouchesNothing() {
+        engine.submit("ACME", 1L, Side.BUY, 9900L, 5L);
+
+        assertThat(engine.cancel("ACME", 999L)).isZero(); // unknown id
+        assertThat(engine.cancel("NOPE", 1L)).isZero(); // unknown symbol
+        assertThat(engine.openQuantity("ACME", 1L)).isEqualTo(5L);
+    }
+
+    @Test
+    void cancelOfPartiallyFilledOrderRemovesOnlyTheRestingRemainder() {
+        engine.submit("ACME", 1L, Side.SELL, 10000L, 3L); // resting ask, qty 3
+        engine.submit("ACME", 2L, Side.BUY, 10000L, 5L); // fills 3, rests 2 as a bid
+
+        long cancelled = engine.cancel("ACME", 2L);
+
+        assertThat(cancelled).isEqualTo(2L); // only the unfilled remainder, not the original 5
+        assertThat(engine.openQuantity("ACME", 2L)).isZero();
+        assertThat(engine.bestBid("ACME")).isEmpty();
+    }
 }

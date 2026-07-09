@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableMap;
 import java.util.Objects;
@@ -48,6 +49,35 @@ final class OrderBook {
                     .addLast(new RestingOrder(orderId, limitPrice, remaining));
         }
         return fills;
+    }
+
+    /**
+     * Remove a resting order by id and return the quantity that was still open (0 if the order is
+     * not resting — already fully filled, never rested, or unknown). Empties collapse their price
+     * level so the book stays free of vacant keys.
+     */
+    long cancel(long orderId) {
+        long removed = removeById(bids, orderId);
+        return removed > 0 ? removed : removeById(asks, orderId);
+    }
+
+    private static long removeById(NavigableMap<Long, Deque<RestingOrder>> book, long orderId) {
+        for (var levelEntry : book.entrySet()) {
+            Deque<RestingOrder> level = levelEntry.getValue();
+            Iterator<RestingOrder> it = level.iterator();
+            while (it.hasNext()) {
+                RestingOrder resting = it.next();
+                if (resting.orderId == orderId) {
+                    long removed = resting.remaining;
+                    it.remove();
+                    if (level.isEmpty()) {
+                        book.remove(levelEntry.getKey());
+                    }
+                    return removed;
+                }
+            }
+        }
+        return 0;
     }
 
     private static boolean crossable(Side side, long limitPrice, NavigableMap<Long, Deque<RestingOrder>> opposite) {

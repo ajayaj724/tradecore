@@ -3,6 +3,8 @@ package io.github.ajayaj724.tradecore.orders;
 import io.github.ajayaj724.tradecore.risk.RiskDecision;
 import io.github.ajayaj724.tradecore.risk.RiskService;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
+import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
+import io.github.ajayaj724.tradecore.shared.OrderCancelled;
 import io.github.ajayaj724.tradecore.shared.OrderRejected;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import io.micrometer.core.instrument.Counter;
@@ -81,6 +83,31 @@ class OrderService {
         };
     }
 
+    /**
+     * Request cancellation of a working order. Orders may not call the matching engine directly, so
+     * this only publishes {@link OrderCancelRequested} and audits the intent; the terminal CANCELLED
+     * status is applied later via {@link #applyCancel} when execution answers with {@code OrderCancelled}.
+     */
+    @Transactional
+    Order cancel(long id, String account, String principal) {
+        Order order = orders.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        if (!order.account().equals(account)) {
+            throw new OrderNotFoundException(id); // do not leak existence to non-owners
+        }
+        if (order.status() != OrderStatus.ACCEPTED && order.status() != OrderStatus.PARTIALLY_FILLED) {
+            throw new OrderNotCancellableException(id, order.status());
+        }
+        record(order, "CANCEL_REQUESTED", principal);
+        events.publishEvent(new OrderCancelRequested(
+                UUID.randomUUID(),
+                Objects.requireNonNull(order.id()),
+                order.account(),
+                order.symbol(),
+                order.side(),
+                clock.instant()));
+        return order;
+    }
+
     private Order accept(Order order, String principal) {
         Order accepted = orders.save(order.accepted());
         record(accepted, "ACCEPTED", principal);
@@ -133,6 +160,21 @@ class OrderService {
     private void record(Order order, String action, String principal) {
         audit.save(new AuditRecord(
                 null, Objects.requireNonNull(order.id()), order.account(), action, principal, clock.instant(), null));
+    }
+
+    /**
+     * Apply the terminal outcome of a cancellation. Guarded on status: a non-working order is left
+     * untouched, which makes redelivery a no-op and lets a fill that won the race keep its FILLED
+     * status. The {@code @Version} optimistic lock serialises concurrent redeliveries.
+     */
+    @Transactional
+    void applyCancel(OrderCancelled event) {
+        Order order = orders.findById(event.orderId()).orElseThrow(() -> new OrderNotFoundException(event.orderId()));
+        if (order.status() != OrderStatus.ACCEPTED && order.status() != OrderStatus.PARTIALLY_FILLED) {
+            return; // already terminal: duplicate delivery, or a fill beat the cancel
+        }
+        Order cancelled = orders.save(order.cancelled());
+        record(cancelled, "CANCELLED", "system");
     }
 
     @Transactional

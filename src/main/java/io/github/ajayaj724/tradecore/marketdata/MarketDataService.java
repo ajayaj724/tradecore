@@ -3,6 +3,7 @@ package io.github.ajayaj724.tradecore.marketdata;
 import io.github.ajayaj724.tradecore.shared.PriceUpdated;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,6 +40,16 @@ public class MarketDataService {
                 .param("t", OffsetDateTime.now(clock))
                 .update();
         events.publishEvent(new PriceUpdated(UUID.randomUUID(), trade.symbol(), trade.price(), clock.instant()));
+    }
+
+    @Transactional
+    public void applyExternalPrice(String symbol, long price, Instant observedAt) {
+        jdbc.sql("insert into marketdata.last_price (symbol, price) values (:s, :p)"
+                        + " on conflict (symbol) do update set price = :p")
+                .param("s", symbol)
+                .param("p", price)
+                .update();
+        events.publishEvent(new PriceUpdated(UUID.randomUUID(), symbol, price, observedAt));
     }
 
     public long lastPrice(String symbol) {

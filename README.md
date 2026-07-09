@@ -192,6 +192,33 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
   stdout only today. Tracked for Phase 2
 - **CONTRIBUTING.md, SECURITY.md, CI badge** — spec §11 items; not created in Phase 1A
 
+## Test automation & regression
+
+Regression is automated in layers; **`scripts/regression.sh` is the single command to run every
+time** — it runs the authoritative in-process suite, and the end-to-end smoke suite too when the app
+is up (or with `--e2e`):
+
+| Layer | What it is | Runs |
+|---|---|---|
+| **In-process suite** (authoritative regression) | Every unit + Testcontainers integration test + the jqwik engine property test, behind the full quality gate (Spotless, Error Prone/NullAway, Checkstyle, PMD, ArchUnit + `ApplicationModules.verify()`, 80% coverage). | `scripts/gate.sh` (`mvn verify`) — every commit / CI |
+| **End-to-end smoke suite** | Black-box HTTP assertions against the **running** app (real Keycloak tokens, real filter chain, real matching path): health/auth/OpenAPI/Prometheus public-vs-401, an order filling end-to-end, a risk rejection. | `scripts/smoke.sh` (needs `scripts/up.sh` + `scripts/run.sh`) |
+| **Performance suites** (on demand, not every run) | Gatling load test + published SLOs; JMH engine benchmarks. | `mvn -Pgatling …` · `mvn -Pjmh …` |
+
+```bash
+scripts/regression.sh          # gate + full in-process suite; + smoke if the app is already up
+scripts/regression.sh --e2e    # also require the app to be up and run the smoke suite
+```
+
+**Adding tests for a new feature** (this is a project convention, not optional):
+
+- A new endpoint, module, or behavior ships with **unit and/or Testcontainers integration tests** in
+  `src/test/java/…`; `mvn verify` discovers them automatically, so they join the every-commit
+  regression with no wiring. Match the existing patterns (`*IT` for `@SpringBootTest`, plain `*Test`
+  for unit); every `@ApplicationModuleListener` ships a duplicate-delivery test; every matching-engine
+  change ships a jqwik property test.
+- If it adds an externally observable HTTP behavior, also add a **`check_<feature>` function** to
+  `scripts/smoke.sh` and list it in `RUN_CHECKS` — one function per capability, nothing else to wire.
+
 ## Load testing & SLOs
 
 Phase 3B adds a [Gatling](https://gatling.io) load test (Java DSL) that drives the real

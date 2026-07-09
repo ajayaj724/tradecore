@@ -128,7 +128,23 @@ to a full local stack:
 Grafana (`:3000`, anonymous viewer) auto-provisions the **tradecore — OMS overview** board from
 `infra/grafana/provisioning/dashboards/`: order throughput, fill-latency p50/p99, risk-rejection
 rate, event-registry lag, reconciliation drift (`tradecore_reconciliation_drift_pairs`, flat at 0
-when consistent), and JVM/virtual-thread health.
+when consistent), JVM/virtual-thread health, and (Phase 3A) the Upstox circuit-breaker state and
+market-data feed staleness in seconds. **If Grafana was already running, restart it** —
+dashboard provider configs load at startup, so a live container won't pick up the two new panels
+until it restarts (`docker compose restart grafana`, or `scripts/down.sh && scripts/up.sh`).
+
+### Upstox market-data adapter (Phase 3A)
+
+`marketdata` polls Upstox for last-traded price on a fixed schedule via a plain `RestClient`
+(read-timeout bounded, no `TimeLimiter` — see
+[ADR-0010](docs/adr/0010-resilient-external-market-data-adapter.md) for why), guarded by a
+Resilience4j retry + circuit breaker (`upstox` instance). On a breaker-open or exhausted-retry
+call, the feed **retains the last known good price** rather than propagating a fault or a stale
+zero — `UpstoxFeedMetrics` publishes `tradecore.marketdata.feed.staleness.seconds`
+(`tradecore_marketdata_feed_staleness_seconds` scraped) so a stuck feed is visible even while the
+breaker stays quiet. The feed is stub-driven today (WireMock in tests, a local stub in dev); point
+`tradecore.upstox.base-url` and `tradecore.upstox.access-token` at the real Upstox sandbox and no
+code changes are needed to go live.
 
 ## Quality gate
 

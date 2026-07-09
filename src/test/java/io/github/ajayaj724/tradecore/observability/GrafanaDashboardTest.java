@@ -21,7 +21,7 @@ class GrafanaDashboardTest {
         JsonNode panels = root.get("panels");
         assertThat(panels).isNotNull();
         assertThat(panels.isArray()).isTrue();
-        assertThat(panels.size()).isGreaterThanOrEqualTo(6);
+        assertThat(panels.size()).isGreaterThanOrEqualTo(8);
 
         String json = root.toString();
         assertThat(json).contains("tradecore_reconciliation_drift_pairs");
@@ -29,5 +29,7 @@ class GrafanaDashboardTest {
         assertThat(json).contains("tradecore_orders_submitted_total");
         assertThat(json).contains("tradecore_risk_rejections_total");
         assertThat(json).contains("tradecore_events_registry_lag");
+        assertThat(json).contains("resilience4j_circuitbreaker_state");
+        assertThat(json).contains("tradecore_marketdata_feed_staleness_seconds");
     }
 }

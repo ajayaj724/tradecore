@@ -156,6 +156,19 @@ class MatchingEnginePropertyTest {
     }
 
     @Property
+    void immediateOrCancelOrdersNeverRest(@ForAll("orderSequences") List<Input> inputs) {
+        MatchingEngine engine = new MatchingEngine();
+        inputs.forEach(in -> engine.submit("ACME", in.orderId(), in.side(), in.price(), in.quantity()));
+
+        // A marketable IOC on each side crosses whatever it can, then drops the rest — never rests.
+        engine.submitIoc("ACME", 10_001L, Side.BUY, 10_100L, 15L);
+        engine.submitIoc("ACME", 10_002L, Side.SELL, 9_900L, 15L);
+
+        assertThat(engine.openQuantity("ACME", 10_001L)).isZero();
+        assertThat(engine.openQuantity("ACME", 10_002L)).isZero();
+    }
+
+    @Property
     void fifoWithinPriceLevel(@ForAll("orderSequences") List<Input> inputs) {
         // Deterministic FIFO scenario re-run under jqwik: at the same price, the earliest
         // (lowest id) resting order fills first. The randomized inputs above already exercise

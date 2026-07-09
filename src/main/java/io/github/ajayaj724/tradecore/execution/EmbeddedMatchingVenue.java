@@ -6,6 +6,7 @@ import io.github.ajayaj724.tradecore.execution.engine.Side;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
 import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
 import io.github.ajayaj724.tradecore.shared.OrderCancelled;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -55,10 +56,14 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
             return List.of();
         }
         rememberAccount(order.orderId(), order.account());
-        List<Fill> fills = engine.submit(
-                order.symbol(), order.orderId(), engineSide(order.side()), order.price(), order.quantity());
+        boolean market = order.type() == OrderType.MARKET;
+        Side side = engineSide(order.side());
+        List<Fill> fills = market
+                ? engine.submitIoc(order.symbol(), order.orderId(), side, order.price(), order.quantity())
+                : engine.submit(order.symbol(), order.orderId(), side, order.price(), order.quantity());
         markProcessed(order.eventId());
         List<TradeExecuted> trades = new ArrayList<>();
+        long filled = 0;
         for (Fill f : fills) {
             TradeExecuted trade = new TradeExecuted(
                     UUID.randomUUID(),
@@ -72,8 +77,27 @@ class EmbeddedMatchingVenue implements ExecutionVenue {
                     clock.instant());
             events.publishEvent(trade);
             trades.add(trade);
+            filled += f.quantity();
+        }
+        if (market) {
+            cancelRemainder(order, filled);
         }
         return trades;
+    }
+
+    /** A market order never rests: cancel the unfilled remainder so risk frees its reserved cap hold. */
+    private void cancelRemainder(OrderAccepted order, long filled) {
+        long remainder = order.quantity() - filled;
+        if (remainder > 0) {
+            events.publishEvent(new OrderCancelled(
+                    UUID.randomUUID(),
+                    order.orderId(),
+                    order.account(),
+                    order.symbol(),
+                    order.side(),
+                    remainder,
+                    clock.instant()));
+        }
     }
 
     /**

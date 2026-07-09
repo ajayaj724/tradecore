@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
 import io.github.ajayaj724.tradecore.shared.OrderAccepted;
 import io.github.ajayaj724.tradecore.shared.OrderCancelRequested;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Instant;
@@ -32,7 +33,13 @@ class EmbeddedMatchingVenueIT {
     // Distinct symbols per method: the engine is a shared in-memory bean across the suite, so each
     // test uses its own symbol (unused elsewhere) to keep its book isolated.
     private static OrderAccepted accepted(long id, Side side, long price, long qty, String symbol) {
-        return new OrderAccepted(UUID.randomUUID(), id, "trader1", symbol, side, price, qty, Instant.EPOCH);
+        return new OrderAccepted(
+                UUID.randomUUID(), id, "trader1", symbol, side, OrderType.LIMIT, price, qty, Instant.EPOCH);
+    }
+
+    private static OrderAccepted market(long id, Side side, long cap, long qty, String symbol) {
+        return new OrderAccepted(
+                UUID.randomUUID(), id, "trader1", symbol, side, OrderType.MARKET, cap, qty, Instant.EPOCH);
     }
 
     private static OrderCancelRequested cancelRequest(long id, Side side, String symbol) {
@@ -101,5 +108,25 @@ class EmbeddedMatchingVenueIT {
         // Since 321 never rested, a crossing buy produces no trade.
         List<TradeExecuted> trades = venue.submit(accepted(322L, Side.BUY, 10000L, 5L, "CXC"));
         assertThat(trades).isEmpty();
+    }
+
+    @Test
+    void marketOrderFillsAvailableLiquidityAndRestsNoRemainder() {
+        venue.submit(accepted(501L, Side.SELL, 10000L, 3L, "MKA")); // resting ask, qty 3
+
+        List<TradeExecuted> trades = venue.submit(market(502L, Side.BUY, 10500L, 5L, "MKA")); // wants 5
+
+        assertThat(trades).hasSize(1);
+        assertThat(trades.getFirst().quantity()).isEqualTo(3L); // filled only what was there
+        // The unfilled 2 did not rest: a later crossing sell finds no resting buy.
+        assertThat(venue.submit(accepted(503L, Side.SELL, 10000L, 2L, "MKA"))).isEmpty();
+    }
+
+    @Test
+    void marketOrderWithNoLiquidityFillsAndRestsNothing() {
+        List<TradeExecuted> trades = venue.submit(market(511L, Side.BUY, 10500L, 5L, "MKB")); // empty book
+
+        assertThat(trades).isEmpty();
+        assertThat(venue.submit(accepted(512L, Side.SELL, 10000L, 5L, "MKB"))).isEmpty(); // nothing rested
     }
 }

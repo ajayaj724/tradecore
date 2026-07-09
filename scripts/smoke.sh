@@ -129,6 +129,25 @@ check_cancel_releases_a_resting_order() {
   expect_body "the buy reached CANCELLED (async release)" '"status":"CANCELLED"'
 }
 
+check_market_order_is_ioc() {
+  local t1 order_id i
+  t1=$(scripts/token.sh trader1)
+  # a MARKET buy capped at 1 paise can never cross any realistic ask, so IOC cancels the whole order —
+  # a deterministic exercise of the market-order path over the real stack (no resting order to race)
+  call POST /api/v1/orders "$t1" '{"symbol":"ACME","side":"BUY","price":1,"quantity":1,"type":"MARKET"}'
+  expect_status "a market buy is accepted" 201
+  expect_body "the market buy is ACCEPTED" '"status":"ACCEPTED"'
+  order_id=$(sed -n 's/.*"id":\([0-9]*\).*/\1/p' <<<"$BODY")
+  # immediate-or-cancel is event-driven, so poll for the terminal CANCELLED state
+  for i in $(seq 1 20); do
+    call GET "/api/v1/orders/$order_id" "$t1"
+    grep -qF '"status":"CANCELLED"' <<<"$BODY" && break
+    sleep 0.5
+  done
+  expect_status "the market order is readable by its owner" 200
+  expect_body "the unmarketable market order became CANCELLED (IOC)" '"status":"CANCELLED"'
+}
+
 RUN_CHECKS=(
   check_health_is_public
   check_unauthenticated_is_problem_json_401
@@ -136,6 +155,7 @@ RUN_CHECKS=(
   check_prometheus_scrape_is_public
   check_order_fills_end_to_end
   check_cancel_releases_a_resting_order
+  check_market_order_is_ioc
   check_risk_rejects_insufficient_cash
 )
 

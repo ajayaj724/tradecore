@@ -9,6 +9,7 @@ public record OrderAccepted(
         String account,
         String symbol,
         Side side,
+        OrderType type,
         long price,
         long quantity,
         Instant occurredAt) {}

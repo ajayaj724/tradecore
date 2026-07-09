@@ -35,6 +35,10 @@ tradecore:
   upstox:
     poll:
       initial-delay-ms: 3600000
+  # effectively unlimited by default so shared-context ITs are never throttled; RateLimitIT
+  # overrides this with a tiny capacity in its own (property-isolated) context.
+  ratelimit:
+    capacity: 1000000
 management:
   endpoints:
     web:

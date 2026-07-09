@@ -107,10 +107,15 @@ Architecture decisions are recorded as ADRs in [`docs/adr/`](docs/adr/):
 
 OAuth2 resource server validating Keycloak-issued JWTs. Roles `TRADER`, `OPS`, `ADMIN` are
 mapped from the JWT's `realm_access.roles` claim to Spring Security authorities. Every
-endpoint requires authentication except `/actuator/health` and (locally only, see ADR-0002)
-`/actuator/prometheus`. Authentication and authorization failures render as RFC 9457
-`application/problem+json`, not framework default HTML/JSON — see
+endpoint requires authentication except `/actuator/health`, the OpenAPI docs (see below), and
+(locally only, see ADR-0002) `/actuator/prometheus`. Authentication and authorization failures
+render as RFC 9457 `application/problem+json`, not framework default HTML/JSON — see
 `ProblemDetailsAuthHandlers` and `GlobalExceptionHandler`.
+
+The API is documented with OpenAPI 3 (springdoc): the spec is at `/v3/api-docs` and interactive
+**Swagger UI at http://localhost:8080/swagger-ui.html** (both public). Swagger UI has an
+**Authorize** button that takes a Keycloak bearer token (`scripts/token.sh`) so secured endpoints
+can be exercised from the browser.
 
 ## Observability
 
@@ -176,8 +181,6 @@ CI (GitHub Actions, runs on push to a published remote) adds, on top of the loca
 - **Live gitleaks verification** — the CI job is configured (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml))
   but hasn't run against a real push yet; this repo has no remote configured as of this commit
 - **PIT mutation testing** — planned as a PR/nightly job once a baseline threshold is set
-- **Swagger/OpenAPI UI** — `/api/v1/orders` exists now, but springdoc/Swagger UI wiring is still
-  pending (spec §8); the endpoints are exercised via `scripts/api.sh` today
 - **Loki log shipping** — Loki is provisioned as a Grafana data source and runs in compose, but
   no shipper (e.g. Promtail) forwards app logs into it yet; app logs are structured JSON to
   stdout only today. Tracked for Phase 2
@@ -248,7 +251,6 @@ scope for this commit:
   cancel are deferred ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md))
 - **OWASP Dependency-Check** and a live/verified gitleaks run — need an NVD API key and a
   publish target respectively; both wire in when this repo is pushed to GitHub
-- **Swagger/OpenAPI UI** — springdoc wiring for the new `/api/v1/orders` endpoints (spec §8)
 - Reconciliation reports the latest run only (no historical drift storage) and does not remediate
   drift or page on it — alerting on the emitted gauges is a deploy-time concern.
 

@@ -31,6 +31,14 @@ class SecurityConfig {
                         // local-only compose scrape; lock down before any non-local deploy
                         .requestMatchers("/actuator/prometheus")
                         .permitAll()
+                        // OpenAPI docs + Swagger UI are a sanctioned unauthenticated exception
+                        .requestMatchers(
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
+                        .permitAll()
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakRealmRoles()))

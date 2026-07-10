@@ -22,6 +22,22 @@ export interface RefreshConfig {
   clientSecret: string;
 }
 
+/**
+ * Keycloak realm roles from an access token's payload. Decode-only (no signature check) —
+ * the token came straight from Keycloak's token endpoint over the back channel, and the
+ * backend re-validates it cryptographically on every request. Roles here only shape the UI.
+ */
+export function realmRoles(accessToken: string): string[] {
+  try {
+    const payload = accessToken.split(".")[1] ?? "";
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const claims = JSON.parse(json) as { realm_access?: { roles?: string[] } };
+    return claims.realm_access?.roles ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Refresh this many seconds before nominal expiry so a token never dies mid-request. */
 const EXPIRY_BUFFER_SECONDS = 30;
 

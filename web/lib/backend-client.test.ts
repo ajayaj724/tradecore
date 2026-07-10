@@ -49,6 +49,14 @@ describe("createBackend", () => {
     expect(result.data).toEqual([{ id: 2 }, { id: 1 }]);
   });
 
+  it("requestsAllAccountsWhenOpsScopeGiven", async () => {
+    const fetchFn = fetchReturning(200, []);
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    await backend.list("all");
+    const [url] = fetchFn.mock.calls[0] as unknown as [string];
+    expect(url).toBe(`${BASE}/api/v1/orders?scope=all`);
+  });
+
   it("fetchesTheCurrentUsersCashBalance", async () => {
     const fetchFn = fetchReturning(200, { account: "t1", settled: 500000, held: 100000, available: 400000 });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

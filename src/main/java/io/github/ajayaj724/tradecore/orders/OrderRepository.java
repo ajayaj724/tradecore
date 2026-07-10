@@ -7,4 +7,6 @@ import org.springframework.data.repository.ListCrudRepository;
 interface OrderRepository extends ListCrudRepository<Order, Long> {
 
     List<Order> findByAccountOrderByIdDesc(String account, Limit limit);
+
+    List<Order> findAllByOrderByIdDesc(Limit limit);
 }

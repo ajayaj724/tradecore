@@ -3,8 +3,9 @@ import { backend } from "@/lib/backend";
 import { rejectCrossOrigin } from "@/lib/http";
 import type { SubmitOrderRequest } from "@/lib/types";
 
-export async function GET() {
-  const result = await backend.list();
+export async function GET(request: Request) {
+  const scope = new URL(request.url).searchParams.get("scope");
+  const result = await backend.list(scope === "all" ? "all" : undefined);
   return NextResponse.json(result.data ?? [], { status: result.status });
 }
 

@@ -61,7 +61,7 @@ class OrderController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    @PreAuthorize("hasAnyRole('TRADER','OPS','ADMIN')")
     ResponseEntity<List<OrderResponse>> list(
             Authentication authentication,
             @AuthenticationPrincipal Jwt jwt,
@@ -71,8 +71,8 @@ class OrderController {
         int capped = Math.clamp(limit, 1, 200);
         List<Order> rows;
         if ("all".equals(scope)) {
-            if (!isOps(authentication)) {
-                throw new AccessDeniedException("scope=all requires the OPS role");
+            if (!canViewAllAccounts(authentication)) {
+                throw new AccessDeniedException("scope=all requires the OPS or ADMIN role");
             }
             rows = service.historyAllAccounts(capped);
         } else {
@@ -82,14 +82,24 @@ class OrderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    @PreAuthorize("hasAnyRole('TRADER','OPS','ADMIN')")
     ResponseEntity<OrderResponse> get(
             Authentication authentication, @AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
-        return ResponseEntity.ok(OrderResponse.from(service.findForViewer(id, account, isOps(authentication))));
+        return ResponseEntity.ok(
+                OrderResponse.from(service.findForViewer(id, account, canViewAllAccounts(authentication))));
     }
 
+    /** OPS acts (cancel on behalf); ADMIN observes. Both read across accounts (ADR-0023). */
     private static boolean isOps(Authentication authentication) {
-        return authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OPS".equals(a.getAuthority()));
+        return hasRole(authentication, "ROLE_OPS");
+    }
+
+    private static boolean canViewAllAccounts(Authentication authentication) {
+        return hasRole(authentication, "ROLE_OPS") || hasRole(authentication, "ROLE_ADMIN");
+    }
+
+    private static boolean hasRole(Authentication authentication, String role) {
+        return authentication.getAuthorities().stream().anyMatch(a -> role.equals(a.getAuthority()));
     }
 }

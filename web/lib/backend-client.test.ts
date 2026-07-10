@@ -85,6 +85,16 @@ describe("createBackend", () => {
     expect(result.data).toEqual([position]);
   });
 
+  it("fetchesTheReconciliationReport", async () => {
+    const report = { driftPairs: 0, accounts: [{ account: "trader1", equity: 1, cashDrift: 0, driftedPairs: 0 }] };
+    const fetchFn = fetchReturning(200, report);
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    const result = await backend.reconciliation();
+    const [url] = fetchFn.mock.calls[0] as unknown as [string];
+    expect(url).toBe(`${BASE}/api/v1/reconciliation`);
+    expect(result.data).toEqual(report);
+  });
+
   it("passesBackendStatusAndBodyThrough", async () => {
     const fetchFn = fetchReturning(422, { title: "Insufficient cash" });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

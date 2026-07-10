@@ -20,7 +20,7 @@ class BalanceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    @PreAuthorize("hasAnyRole('TRADER','OPS','ADMIN')")
     ResponseEntity<CashBalance> balance(@AuthenticationPrincipal Jwt jwt) {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
         return ResponseEntity.ok(risk.balanceOf(account));

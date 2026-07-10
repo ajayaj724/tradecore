@@ -21,7 +21,7 @@ class PositionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    @PreAuthorize("hasAnyRole('TRADER','OPS','ADMIN')")
     ResponseEntity<List<PositionResponse>> positions(@AuthenticationPrincipal Jwt jwt) {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
         return ResponseEntity.ok(portfolio.positionsFor(account));

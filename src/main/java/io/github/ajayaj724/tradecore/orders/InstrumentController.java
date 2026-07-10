@@ -18,7 +18,7 @@ class InstrumentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    @PreAuthorize("hasAnyRole('TRADER','OPS','ADMIN')")
     ResponseEntity<List<Instrument>> list() {
         return ResponseEntity.ok(service.instruments());
     }

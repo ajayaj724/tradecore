@@ -1,10 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CashBalance, InstrumentInfo, OrderResponse, PositionInfo, SubmitOrderRequest } from "@/lib/types";
+import type {
+  CashBalance,
+  HealthReport,
+  InstrumentInfo,
+  OrderResponse,
+  PositionInfo,
+  SubmitOrderRequest,
+} from "@/lib/types";
 import { isTerminal, isWorking, rupees } from "@/lib/types";
 import { OrderTicket } from "@/components/OrderTicket";
 import { Blotter } from "@/components/Blotter";
+import { HealthPanel } from "@/components/HealthPanel";
 import { Positions } from "@/components/Positions";
 import { LifecycleRail, StatTile } from "@/components/ui";
 
@@ -18,11 +26,14 @@ export function TradingScreen({
   signOutAction: () => Promise<void>;
 }) {
   const isOps = roles.includes("OPS");
+  const isAdmin = roles.includes("ADMIN");
   const canTrade = roles.includes("TRADER");
+  const canViewAll = isOps || isAdmin;
   const [scope, setScope] = useState<"own" | "all">("own");
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [positions, setPositions] = useState<PositionInfo[]>([]);
+  const [health, setHealth] = useState<HealthReport | null>(null);
   const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -94,6 +105,21 @@ export function TradingScreen({
     })();
   }, []);
 
+  // Read-model health, admins only; refreshed on the same cadence as the reconciler (60s).
+  useEffect(() => {
+    if (!isAdmin) return;
+    const load = async () => {
+      const res = await fetch("/api/reconciliation");
+      if (res.ok) {
+        const fresh = (await res.json()) as HealthReport;
+        if (Array.isArray(fresh?.accounts)) setHealth(fresh);
+      }
+    };
+    void load();
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, [isAdmin]);
+
   // One list request refreshes the whole blotter — per-order polling tripped the backend
   // rate limit once an account had a handful of working orders.
   const refreshOrders = useCallback(async () => {
@@ -140,7 +166,7 @@ export function TradingScreen({
           tradecore<span className="text-gold">.</span>
         </span>
         <nav className="flex gap-4 text-[12.5px] text-ink3">
-          {isOps ? (
+          {canViewAll ? (
             <>
               <button
                 onClick={() => setScope("own")}
@@ -194,7 +220,15 @@ export function TradingScreen({
             onSelect={setSelectedId}
             onCancel={cancel}
             showAccount={scope === "all"}
+            canCancel={scope === "all" ? isOps : canTrade}
           />
+
+          {isAdmin && health && (
+            <div className="mt-6">
+              <p className="eyebrow mb-3">System health</p>
+              <HealthPanel report={health} />
+            </div>
+          )}
 
           {positions.length > 0 && scope === "own" && (
             <div className="mt-6">

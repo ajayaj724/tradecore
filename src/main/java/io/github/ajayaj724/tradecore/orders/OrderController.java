@@ -1,6 +1,7 @@
 package io.github.ajayaj724.tradecore.orders;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -52,6 +54,16 @@ class OrderController {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
         // 202: cancellation is accepted for async processing; the order reaches CANCELLED via event.
         return ResponseEntity.accepted().body(OrderResponse.from(service.cancel(id, account, account)));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    ResponseEntity<List<OrderResponse>> list(
+            @AuthenticationPrincipal Jwt jwt, @RequestParam(name = "limit", defaultValue = "50") int limit) {
+        String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
+        return ResponseEntity.ok(service.history(account, Math.clamp(limit, 1, 200)).stream()
+                .map(OrderResponse::from)
+                .toList());
     }
 
     @GetMapping("/{id}")

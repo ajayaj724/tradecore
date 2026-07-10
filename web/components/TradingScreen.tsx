@@ -49,6 +49,17 @@ export function TradingScreen({
     await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
   }, []);
 
+  // Hydrate the blotter with this account's order history (newest first from the backend).
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/orders");
+      if (res.ok) {
+        const history = (await res.json()) as OrderResponse[];
+        if (Array.isArray(history)) setOrders(history);
+      }
+    })();
+  }, []);
+
   // Poll working orders — the backend settles asynchronously, so status/fills arrive over time.
   useEffect(() => {
     const working = orders.filter((o) => !isTerminal(o.status));

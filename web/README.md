@@ -64,9 +64,6 @@ npm run build
 
 ## Scaffold limits (deliberate follow-ups)
 
-- **Blotter shows this session's orders.** The backend exposes `GET /orders/{id}` but no list
-  endpoint, so the app tracks the ids it submitted and polls each. A `GET /api/v1/orders` on the
-  backend would let it load history.
 - **Single symbol (ACME)** and **no live cash figure** — there's no instruments or balances endpoint
   yet; "Reserved" is derived client-side from working orders.
 - Order **type isn't echoed** by the API response, so the blotter shows `—` for it.

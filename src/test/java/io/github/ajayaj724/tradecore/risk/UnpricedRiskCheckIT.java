@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
 import io.github.ajayaj724.tradecore.shared.PriceUpdated;
 import io.github.ajayaj724.tradecore.shared.Side;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -17,20 +19,20 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 @Import(TestcontainersConfig.class)
 class UnpricedRiskCheckIT {
 
-    private static final Instant T = Instant.parse("2026-07-10T10:00:00Z");
-
     private final RiskService risk;
     private final JdbcClient jdbc;
+    private final Instant now;
 
     @Autowired
-    UnpricedRiskCheckIT(RiskService risk, JdbcClient jdbc) {
+    UnpricedRiskCheckIT(RiskService risk, JdbcClient jdbc, Clock clock) {
         this.risk = risk;
         this.jdbc = jdbc;
+        this.now = clock.instant();
     }
 
     @Test
     void unpricedBuyReservesAtTheCollaredReferencePrice() {
-        risk.applyPriceUpdated(new PriceUpdated(UUID.randomUUID(), "UNP-A", 10000, T));
+        risk.applyPriceUpdated(new PriceUpdated(UUID.randomUUID(), "UNP-A", 10000, now));
         jdbc.sql("insert into risk.settled_cash (account, amount) values ('unp-buyer', 1000000)")
                 .update();
 
@@ -46,13 +48,25 @@ class UnpricedRiskCheckIT {
 
     @Test
     void unpricedSellIsFlooredAtTheCollaredReferencePrice() {
-        risk.applyPriceUpdated(new PriceUpdated(UUID.randomUUID(), "UNP-B", 10000, T));
+        risk.applyPriceUpdated(new PriceUpdated(UUID.randomUUID(), "UNP-B", 10000, now));
         jdbc.sql("insert into risk.settled_holdings (account, symbol, qty) values ('unp-seller', 'UNP-B', 10)")
                 .update();
 
         RiskDecision decision = risk.check(880002L, "unp-seller", Side.SELL, "UNP-B", null, 5);
 
         assertThat(decision).isEqualTo(new RiskDecision.Approved(9500L));
+    }
+
+    @Test
+    void unpricedOrderIsRejectedWhenTheReferenceIsStale() {
+        // Two hours old — beyond the default PT1H window.
+        risk.applyPriceUpdated(new PriceUpdated(UUID.randomUUID(), "UNP-STALE", 10000, now.minus(Duration.ofHours(2))));
+        jdbc.sql("insert into risk.settled_cash (account, amount) values ('unp-stale', 1000000)")
+                .update();
+
+        RiskDecision decision = risk.check(880005L, "unp-stale", Side.BUY, "UNP-STALE", null, 5);
+
+        assertThat(decision).isEqualTo(new RiskDecision.Rejected("stale reference price"));
     }
 
     @Test

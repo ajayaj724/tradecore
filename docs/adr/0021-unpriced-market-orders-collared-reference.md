@@ -30,9 +30,11 @@ ADR-0016 anticipated: still no synchronous coupling, `ApplicationModules.verify(
   returning the engine cap out-of-band or having orders query marketdata directly — the
   first splits one decision across two calls, the second adds a new module dependency when
   risk already owns the reservation decision.
-- **Staleness is not enforced** in this iteration: the collar bounds the damage and the
-  seeded openings must remain usable in a quiet local book. Tightening (reject when the
-  reference is older than an SLO) is deliberately left until the feed SLO work.
+- **Staleness (enforced since 2026-07-10):** an unpriced order is rejected
+  `"stale reference price"` when the reference is older than
+  `tradecore.risk.reference-max-age` (default `PT1H`; the local profile uses `PT24H` so a
+  quiet demo book stays usable). The collar bounds a moving market; the window bounds a
+  dead feed.
 
 ## Consequences
 

@@ -7,3 +7,7 @@
 tradecore:
   security:
     expose-prometheus-scrape: true
+  risk:
+    # A quiet local book trades rarely; don't let the PT1H default lock out unpriced
+    # MARKET orders between demo sessions (ADR-0021 staleness follow-up).
+    reference-max-age: PT24H

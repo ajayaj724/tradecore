@@ -21,10 +21,12 @@ public class RiskService {
 
     private final JdbcClient jdbc;
     private final Clock clock;
+    private final RiskProperties props;
 
-    RiskService(JdbcClient jdbc, Clock clock) {
+    RiskService(JdbcClient jdbc, Clock clock, RiskProperties props) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.props = props;
     }
 
     /** Basis points of protective collar applied to the reference price of unpriced MARKET orders. */
@@ -38,26 +40,37 @@ public class RiskService {
     @Transactional
     public RiskDecision check(
             long orderId, String account, Side side, String symbol, @Nullable Long price, long quantity) {
-        Long effective = price != null ? price : collaredReference(symbol, side);
-        if (effective == null) {
-            return new RiskDecision.Rejected("no reference price");
+        long effective;
+        if (price != null) {
+            effective = price;
+        } else {
+            ReferencePrice reference = referencePrice(symbol);
+            if (reference == null) {
+                return new RiskDecision.Rejected("no reference price");
+            }
+            // The collar bounds the damage of a moving market; this bounds the damage of a
+            // dead feed (ADR-0021 follow-up). Window is tradecore.risk.reference-max-age.
+            if (reference.updatedAt().isBefore(clock.instant().minus(props.referenceMaxAge()))) {
+                return new RiskDecision.Rejected("stale reference price");
+            }
+            long collar = reference.price() * COLLAR_BASIS_POINTS / 10_000;
+            effective = side == Side.BUY ? reference.price() + collar : Math.max(1, reference.price() - collar);
         }
         return side == Side.BUY
                 ? reserveCash(orderId, account, effective, quantity)
                 : reserveHoldings(orderId, account, symbol, effective, quantity);
     }
 
-    private @Nullable Long collaredReference(String symbol, Side side) {
-        Long reference = jdbc.sql("select price from risk.reference_price where symbol = :s")
+    private record ReferencePrice(long price, java.time.Instant updatedAt) {}
+
+    private @Nullable ReferencePrice referencePrice(String symbol) {
+        return jdbc.sql("select price, updated_at from risk.reference_price where symbol = :s")
                 .param("s", symbol)
-                .query(Long.class)
+                .query((rs, rowNum) -> new ReferencePrice(
+                        rs.getLong("price"),
+                        rs.getObject("updated_at", OffsetDateTime.class).toInstant()))
                 .optional()
                 .orElse(null);
-        if (reference == null) {
-            return null;
-        }
-        long collar = reference * COLLAR_BASIS_POINTS / 10_000;
-        return side == Side.BUY ? reference + collar : Math.max(1, reference - collar);
     }
 
     /** Read-model update: last-write-wins by event time, so replays and stale redeliveries are no-ops. */

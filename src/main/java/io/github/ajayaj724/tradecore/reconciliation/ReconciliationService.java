@@ -84,12 +84,12 @@ public class ReconciliationService {
         return new ReconciliationReport(drifted, accounts);
     }
 
-    /** Reconcile one account across the configured symbols. */
+    /** Reconcile one account across every tradable symbol (marketdata is the universe). */
     private ReconciliationReport.AccountHealth healthOf(String account) {
         long cashDrift = risk.settledCash(account) - ledger.balanceOf(account);
         int drifted = 0;
         long positionsValue = 0;
-        for (String symbol : props.symbols()) {
+        for (String symbol : marketData.knownSymbols()) {
             long qty = portfolio.positionQty(account, symbol);
             long holdingsDrift = risk.settledHoldings(account, symbol) - qty;
             // cash drift is per-account, so it marks every configured symbol-pair for that account;

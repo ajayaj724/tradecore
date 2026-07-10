@@ -69,6 +69,13 @@ public class MarketDataService {
                 .single();
     }
 
+    /** Every symbol with a known price — the tradable universe reconciliation should cover. */
+    public java.util.List<String> knownSymbols() {
+        return jdbc.sql("select symbol from marketdata.last_price order by symbol")
+                .query(String.class)
+                .list();
+    }
+
     private boolean alreadyProcessed(UUID eventId) {
         return jdbc.sql("select count(*) from marketdata.processed_event where event_id = :e")
                         .param("e", eventId)

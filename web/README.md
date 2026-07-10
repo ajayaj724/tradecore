@@ -49,6 +49,8 @@ client secret in the realm JSON is a local-demo throwaway.
 npm test          # vitest — token rotation + backend client units
 npm run lint
 npm run build
+npm run e2e       # Playwright — full flows (login, orders, four-eyes, admin) against the
+                  # running local stack: scripts/up.sh && scripts/run.sh, then npm run dev
 ```
 
 ## Structure

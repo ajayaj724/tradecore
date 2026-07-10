@@ -77,7 +77,12 @@ class OrderService {
         }
         // Unpriced MARKET orders persist with price 0 until risk supplies the effective cap.
         Order created = orders.save(Order.newOrder(
-                account, cmd.symbol(), cmd.side(), Objects.requireNonNullElse(cmd.price(), 0L), cmd.quantity()));
+                account,
+                cmd.symbol(),
+                cmd.side(),
+                cmd.type(),
+                Objects.requireNonNullElse(cmd.price(), 0L),
+                cmd.quantity()));
         record(created, "SUBMITTED", principal);
         submitted.increment();
         rememberKey(cmd.idempotencyKey(), Objects.requireNonNull(created.id()));

@@ -3,6 +3,7 @@ package io.github.ajayaj724.tradecore.orders;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Instant;
@@ -29,7 +30,8 @@ class OrderFillListenerIT {
     // Insert ACCEPTED orders directly (no submit, so no OrderAccepted event and no shared engine) —
     // this isolates applyTrade under test. The full crossing pipeline is proven end-to-end in Task 8.
     private long insertAccepted(String account, Side side) {
-        Order o = new Order(null, account, "ACME", side, 10000L, 5L, 0, OrderStatus.ACCEPTED, null, null);
+        Order o = new Order(
+                null, account, "ACME", side, OrderType.LIMIT, 10000L, 5L, 0, OrderStatus.ACCEPTED, null, null);
         return Objects.requireNonNull(orders.save(o).id());
     }
 
@@ -65,8 +67,8 @@ class OrderFillListenerIT {
         // A market IOC (or a cancel) already finalised the buy as CANCELLED; a TradeExecuted delivered
         // afterwards must book the filled quantity without resurrecting the order.
         long sellId = insertAccepted("trader2", Side.SELL);
-        Order cancelledBuy =
-                new Order(null, "trader1", "ACME", Side.BUY, 10000L, 5L, 0, OrderStatus.CANCELLED, null, null);
+        Order cancelledBuy = new Order(
+                null, "trader1", "ACME", Side.BUY, OrderType.LIMIT, 10000L, 5L, 0, OrderStatus.CANCELLED, null, null);
         long buyId = Objects.requireNonNull(orders.save(cancelledBuy).id());
         TradeExecuted trade = new TradeExecuted(
                 UUID.randomUUID(), buyId, sellId, "trader1", "trader2", "ACME", 10000L, 3L, Instant.EPOCH);

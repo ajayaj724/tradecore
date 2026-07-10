@@ -51,7 +51,7 @@ export function Blotter({
               <td className="num px-3.5 py-2.5 text-ink3">#{o.id}</td>
               {showAccount && <td className="px-3.5 py-2.5 font-semibold">{o.account}</td>}
               <td className={`px-3.5 py-2.5 font-bold ${o.side === "BUY" ? "text-buy" : "text-sell"}`}>{o.side}</td>
-              <td className="px-3.5 py-2.5 text-ink2">{/* type is not returned by the API */}—</td>
+              <td className="px-3.5 py-2.5 text-ink2">{o.type}</td>
               <td className="num px-3.5 py-2.5 text-right">{rupees(o.price).replace("₹", "")}</td>
               <td className="num px-3.5 py-2.5 text-right">
                 {o.filledQty} / {o.quantity}

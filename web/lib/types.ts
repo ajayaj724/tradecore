@@ -14,6 +14,7 @@ export interface OrderResponse {
   account: string;
   symbol: string;
   side: Side;
+  type: OrderType;
   price: number;
   quantity: number;
   filledQty: number;

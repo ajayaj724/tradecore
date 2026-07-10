@@ -1,5 +1,6 @@
 package io.github.ajayaj724.tradecore.orders;
 
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -10,6 +11,7 @@ record OrderResponse(
         String account,
         String symbol,
         Side side,
+        OrderType type,
         long price,
         long quantity,
         long filledQty,
@@ -22,6 +24,7 @@ record OrderResponse(
                 o.account(),
                 o.symbol(),
                 o.side(),
+                o.orderType(),
                 o.price(),
                 o.quantity(),
                 o.filledQty(),

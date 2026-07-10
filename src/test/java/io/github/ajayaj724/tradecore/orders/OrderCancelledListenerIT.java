@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
 import io.github.ajayaj724.tradecore.shared.OrderCancelled;
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import java.time.Instant;
 import java.util.Objects;
@@ -28,7 +29,8 @@ class OrderCancelledListenerIT {
     }
 
     private long insert(OrderStatus status, long filledQty) {
-        Order o = new Order(null, "trader1", "ACME", Side.BUY, 10000L, 5L, filledQty, status, null, null);
+        Order o = new Order(
+                null, "trader1", "ACME", Side.BUY, OrderType.LIMIT, 10000L, 5L, filledQty, status, null, null);
         return Objects.requireNonNull(orders.save(o).id());
     }
 

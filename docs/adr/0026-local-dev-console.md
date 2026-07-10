@@ -41,6 +41,12 @@ same-origin), and runs a **fixed allowlist** of scripts by key on `POST /manage/
 reaches a shell — only pre-declared commands run. Access it at `http://localhost:8090/console.html`;
 served from the backend instead, the Manage buttons degrade to a hint (the copy-commands still work).
 
+Because it runs scripts, it is hardened against being driven by any other page: a **Host allowlist**
+(loopback only) defeats DNS rebinding, and an **Origin allowlist on every state-changing request**
+defeats drive-by CSRF (a malicious site's cross-origin `POST /manage/wipe` is refused before any
+script runs). The proxy is fixed-target (only `127.0.0.1:8080`, three known prefixes), not an open
+relay.
+
 ## Consequences
 
 - The console is a genuine local control panel (place/cancel orders, read positions/balances

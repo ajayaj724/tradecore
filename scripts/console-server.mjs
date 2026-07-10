@@ -30,6 +30,21 @@ const ACTIONS = {
 const send = (res, code, body, type = "application/json") =>
   res.writeHead(code, { "Content-Type": type }).end(typeof body === "string" ? body : JSON.stringify(body));
 
+// This server runs shell scripts, so it must only ever be driven by its own page. Two guards:
+//  - Host allowlist defeats DNS rebinding (an attacker domain resolved to 127.0.0.1 fails here).
+//  - Origin allowlist on every state-changing request defeats drive-by CSRF: a malicious page's
+//    cross-origin POST carries its own Origin and is rejected; our page's fetch carries ours.
+const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`, `[::1]:${PORT}`]);
+const ALLOWED_ORIGINS = new Set([`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, `http://[::1]:${PORT}`]);
+
+function reject(req) {
+  if (!ALLOWED_HOSTS.has(req.headers.host || "")) return "host not allowed";
+  if (req.method !== "GET" && req.method !== "HEAD" && !ALLOWED_ORIGINS.has(req.headers.origin || "")) {
+    return "cross-origin request refused";
+  }
+  return null;
+}
+
 function proxy(req, res) {
   const chunks = [];
   req.on("data", (c) => chunks.push(c));
@@ -74,6 +89,8 @@ function status(res) {
 }
 
 createServer(async (req, res) => {
+  const bad = reject(req);
+  if (bad) return send(res, 403, { error: bad });
   const url = new URL(req.url, "http://x");
   const path = url.pathname;
   if (path === "/" || path === "/console.html") {

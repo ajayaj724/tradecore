@@ -91,6 +91,22 @@ class OrderHistoryIT {
     }
 
     @Test
+    void adminAlsoSeesEveryAccountsOrdersWithScopeAll() throws Exception {
+        submit("hist-adm-a", "hist-adm-1");
+
+        String body = mvc.perform(get("/api/v1/orders")
+                        .with(jwt().jwt(j -> j.claim("preferred_username", "hist-admin"))
+                                .authorities(createAuthorityList("ROLE_ADMIN")))
+                        .param("scope", "all"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        List<String> accounts = JsonPath.read(body, "$[*].account");
+        assertThat(accounts).contains("hist-adm-a");
+    }
+
+    @Test
     void traderIsRefusedScopeAll() throws Exception {
         mvc.perform(get("/api/v1/orders").with(trader("hist-owner")).param("scope", "all"))
                 .andExpect(status().isForbidden());

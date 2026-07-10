@@ -79,6 +79,16 @@ class OpsCancelOnBehalfIT {
     }
 
     @Test
+    void adminMayObserveButNotCancel() throws Exception {
+        long id = submitResting("ops-cxl-admin");
+
+        mvc.perform(post("/api/v1/orders/{id}/cancel", id)
+                        .with(jwt().jwt(j -> j.claim("preferred_username", "admin1"))
+                                .authorities(createAuthorityList("ROLE_ADMIN"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void opsCancelStillRespectsOrderState() throws Exception {
         // Far-over-cash BUY is risk-rejected → terminal, not cancellable even for ops.
         String body = mvc.perform(post("/api/v1/orders")

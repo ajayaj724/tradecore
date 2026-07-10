@@ -38,6 +38,12 @@ export interface PositionInfo {
   unrealizedPnl: number;
 }
 
+/** Mirrors the backend ReconciliationReport. Paise; driftPairs 0 = healthy. */
+export interface HealthReport {
+  driftPairs: number;
+  accounts: { account: string; equity: number; cashDrift: number; driftedPairs: number }[];
+}
+
 /** Mirrors the backend CashBalance. Paise; available = settled - held. */
 export interface CashBalance {
   account: string;

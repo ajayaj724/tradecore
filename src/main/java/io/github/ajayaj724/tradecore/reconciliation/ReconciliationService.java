@@ -7,6 +7,7 @@ import io.github.ajayaj724.tradecore.risk.RiskService;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,15 +64,28 @@ public class ReconciliationService {
             initialDelayString = "${tradecore.reconciliation.initial-delay-ms:60000}",
             fixedDelayString = "${tradecore.reconciliation.fixed-delay-ms:60000}")
     public void reconcile() {
-        int drifted = 0;
-        for (String account : props.accounts()) {
-            drifted += reconcileAccount(account);
+        ReconciliationReport current = report();
+        for (ReconciliationReport.AccountHealth health : current.accounts()) {
+            AtomicLong holder = equityByAccount.get(health.account());
+            if (holder != null) {
+                holder.set(health.equity());
+            }
         }
-        driftPairs.set(drifted);
+        driftPairs.set(current.driftPairs());
     }
 
-    /** Reconcile one account across the configured symbols; returns its drifted-pair count. */
-    private int reconcileAccount(String account) {
+    /** On-demand snapshot — the same computation the scheduled gauges publish (ADR-0023). */
+    ReconciliationReport report() {
+        List<ReconciliationReport.AccountHealth> accounts =
+                props.accounts().stream().map(this::healthOf).toList();
+        int drifted = accounts.stream()
+                .mapToInt(ReconciliationReport.AccountHealth::driftedPairs)
+                .sum();
+        return new ReconciliationReport(drifted, accounts);
+    }
+
+    /** Reconcile one account across the configured symbols. */
+    private ReconciliationReport.AccountHealth healthOf(String account) {
         long cashDrift = risk.settledCash(account) - ledger.balanceOf(account);
         int drifted = 0;
         long positionsValue = 0;
@@ -79,7 +93,7 @@ public class ReconciliationService {
             long qty = portfolio.positionQty(account, symbol);
             long holdingsDrift = risk.settledHoldings(account, symbol) - qty;
             // cash drift is per-account, so it marks every configured symbol-pair for that account;
-            // the gauge's 0-vs-non-zero alarm is the signal, not the magnitude
+            // the 0-vs-non-zero alarm is the signal, not the magnitude
             if (cashDrift != 0 || holdingsDrift != 0) {
                 drifted++;
             }
@@ -91,10 +105,7 @@ public class ReconciliationService {
                 }
             }
         }
-        AtomicLong holder = equityByAccount.get(account);
-        if (holder != null) {
-            holder.set(ledger.balanceOf(account) + positionsValue);
-        }
-        return drifted;
+        return new ReconciliationReport.AccountHealth(
+                account, ledger.balanceOf(account) + positionsValue, cashDrift, drifted);
     }
 }

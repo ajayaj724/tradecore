@@ -10,12 +10,14 @@ export function Blotter({
   onSelect,
   onCancel,
   showAccount = false,
+  canCancel = true,
 }: {
   orders: OrderResponse[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onCancel: (id: number) => void;
   showAccount?: boolean;
+  canCancel?: boolean;
 }) {
   return (
     <div className="overflow-hidden rounded-[4px] border border-line bg-panel">
@@ -60,7 +62,7 @@ export function Blotter({
                 <StatusBadge status={o.status} fill={o.quantity ? o.filledQty / o.quantity : 0} />
               </td>
               <td className="px-3.5 py-2.5 text-right">
-                {isWorking(o.status) ? (
+                {isWorking(o.status) && canCancel ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

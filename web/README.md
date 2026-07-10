@@ -57,7 +57,8 @@ npm run build
 - `app/globals.css` — the Ledger Terminal tokens as a Tailwind v4 `@theme`
 - `components/TradingScreen.tsx` — the trading surface (header identity, ticket, blotter)
 - `components/ui.tsx` — `StatusBadge` (fill-arc), `LifecycleRail` (signature), `StatTile`
-- `components/OrderTicket.tsx`, `components/Blotter.tsx` — the interactive pieces
+- `components/OrderTicket.tsx`, `components/Blotter.tsx`, `components/Positions.tsx` — the
+  interactive pieces (ticket, order blotter, holdings with integer P&L)
 - `lib/backend.ts` + `lib/backend-client.ts` — server-side backend client (per-user bearer)
 - `lib/session-token.ts` — OIDC access-token rotation for the `jwt` callback
 - `lib/types.ts` — types mirroring the backend contract; money helpers

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CashBalance, InstrumentInfo, OrderResponse, SubmitOrderRequest } from "@/lib/types";
+import type { CashBalance, InstrumentInfo, OrderResponse, PositionInfo, SubmitOrderRequest } from "@/lib/types";
 import { isTerminal, isWorking, rupees } from "@/lib/types";
 import { OrderTicket } from "@/components/OrderTicket";
 import { Blotter } from "@/components/Blotter";
+import { Positions } from "@/components/Positions";
 import { LifecycleRail, StatTile } from "@/components/ui";
 
 export function TradingScreen({
@@ -21,6 +22,7 @@ export function TradingScreen({
   const [scope, setScope] = useState<"own" | "all">("own");
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
+  const [positions, setPositions] = useState<PositionInfo[]>([]);
   const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,6 +32,13 @@ export function TradingScreen({
     if (res.ok) {
       const fresh = (await res.json()) as CashBalance;
       if (typeof fresh?.available === "number") setBalance(fresh);
+    }
+    const pos = await fetch("/api/positions");
+    if (pos.ok) {
+      const fresh = (await pos.json()) as PositionInfo[];
+      if (Array.isArray(fresh)) {
+        setPositions((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
+      }
     }
   }, []);
 
@@ -182,6 +191,13 @@ export function TradingScreen({
             showAccount={scope === "all"}
             readOnly={scope === "all"}
           />
+
+          {positions.length > 0 && scope === "own" && (
+            <div className="mt-6">
+              <p className="eyebrow mb-3">Positions</p>
+              <Positions positions={positions} />
+            </div>
+          )}
 
           {selected && (
             <div className="mt-6 rounded-[4px] border border-line bg-panel p-4">

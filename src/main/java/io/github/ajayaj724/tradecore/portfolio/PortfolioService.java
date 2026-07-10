@@ -5,6 +5,7 @@ import io.github.ajayaj724.tradecore.shared.PriceUpdated;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -48,6 +49,31 @@ public class PortfolioService {
                 .param("p", price.price())
                 .update();
         markProcessed(price.eventId());
+    }
+
+    /** Open or realized positions for the account, alphabetical; mark absent → unrealized 0. */
+    @Transactional(readOnly = true)
+    List<PositionResponse> positionsFor(String account) {
+        return jdbc.sql("select p.symbol, p.total_qty, p.total_cost, p.realized_pnl, m.price as mark_price"
+                        + " from portfolio.position p"
+                        + " left join portfolio.mark_price m on m.symbol = p.symbol"
+                        + " where p.account = :a and (p.total_qty <> 0 or p.realized_pnl <> 0)"
+                        + " order by p.symbol")
+                .param("a", account)
+                .query((rs, rowNum) -> {
+                    long qty = rs.getLong("total_qty");
+                    long cost = rs.getLong("total_cost");
+                    long mark = rs.getLong("mark_price");
+                    boolean marked = !rs.wasNull();
+                    return new PositionResponse(
+                            rs.getString("symbol"),
+                            qty,
+                            cost,
+                            marked ? mark : null,
+                            rs.getLong("realized_pnl"),
+                            marked ? mark * qty - cost : 0);
+                })
+                .list();
     }
 
     public long positionQty(String account, String symbol) {

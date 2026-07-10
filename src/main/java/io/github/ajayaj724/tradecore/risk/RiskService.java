@@ -3,11 +3,14 @@ package io.github.ajayaj724.tradecore.risk;
 import io.github.ajayaj724.tradecore.shared.CashPosted;
 import io.github.ajayaj724.tradecore.shared.HoldingsPosted;
 import io.github.ajayaj724.tradecore.shared.OrderCancelled;
+import io.github.ajayaj724.tradecore.shared.PriceUpdated;
 import io.github.ajayaj724.tradecore.shared.Side;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +27,49 @@ public class RiskService {
         this.clock = clock;
     }
 
+    /** Basis points of protective collar applied to the reference price of unpriced MARKET orders. */
+    private static final long COLLAR_BASIS_POINTS = 500;
+
+    /**
+     * Pre-trade check. {@code price} is the client's limit/cap in paise, or {@code null} for an
+     * unpriced MARKET order — then the reference price ± the collar becomes the effective price
+     * that is both reserved against and returned as the engine's protective cap.
+     */
     @Transactional
-    public RiskDecision check(long orderId, String account, Side side, String symbol, long price, long quantity) {
+    public RiskDecision check(
+            long orderId, String account, Side side, String symbol, @Nullable Long price, long quantity) {
+        Long effective = price != null ? price : collaredReference(symbol, side);
+        if (effective == null) {
+            return new RiskDecision.Rejected("no reference price");
+        }
         return side == Side.BUY
-                ? reserveCash(orderId, account, price, quantity)
-                : reserveHoldings(orderId, account, symbol, quantity);
+                ? reserveCash(orderId, account, effective, quantity)
+                : reserveHoldings(orderId, account, symbol, effective, quantity);
+    }
+
+    private @Nullable Long collaredReference(String symbol, Side side) {
+        Long reference = jdbc.sql("select price from risk.reference_price where symbol = :s")
+                .param("s", symbol)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+        if (reference == null) {
+            return null;
+        }
+        long collar = reference * COLLAR_BASIS_POINTS / 10_000;
+        return side == Side.BUY ? reference + collar : Math.max(1, reference - collar);
+    }
+
+    /** Read-model update: last-write-wins by event time, so replays and stale redeliveries are no-ops. */
+    @Transactional
+    public void applyPriceUpdated(PriceUpdated event) {
+        jdbc.sql("insert into risk.reference_price (symbol, price, updated_at) values (:s, :p, :t)"
+                        + " on conflict (symbol) do update set price = excluded.price, updated_at = excluded.updated_at"
+                        + " where reference_price.updated_at <= excluded.updated_at")
+                .param("s", event.symbol())
+                .param("p", event.price())
+                .param("t", event.occurredAt().atOffset(ZoneOffset.UTC))
+                .update();
     }
 
     private RiskDecision reserveCash(long orderId, String account, long unitPrice, long quantity) {
@@ -55,10 +96,10 @@ public class RiskService {
                 .param("u", unitPrice)
                 .param("q", quantity)
                 .update();
-        return new RiskDecision.Approved();
+        return new RiskDecision.Approved(unitPrice);
     }
 
-    private RiskDecision reserveHoldings(long orderId, String account, String symbol, long quantity) {
+    private RiskDecision reserveHoldings(long orderId, String account, String symbol, long unitPrice, long quantity) {
         Long settled = jdbc.sql("select qty from risk.settled_holdings where account = :a and symbol = :s for update")
                 .param("a", account)
                 .param("s", symbol)
@@ -83,7 +124,7 @@ public class RiskService {
                 .param("s", symbol)
                 .param("q", quantity)
                 .update();
-        return new RiskDecision.Approved();
+        return new RiskDecision.Approved(unitPrice);
     }
 
     /** Read-model update: settled cash is fed by the ledger's signed-delta CashPosted events. */

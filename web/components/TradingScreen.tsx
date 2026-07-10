@@ -90,7 +90,20 @@ export function TradingScreen({
           const res = await fetch(`/api/orders/${o.id}`);
           if (res.ok) {
             const fresh = (await res.json()) as OrderResponse;
-            if (fresh?.id) upsert(fresh);
+            if (fresh?.id) {
+              upsert(fresh);
+              // A partial market fill can book onto an already-terminal order moments after
+              // the status lands; polling stops at terminal, so take one late look.
+              if (isTerminal(fresh.status)) {
+                setTimeout(async () => {
+                  const again = await fetch(`/api/orders/${fresh.id}`);
+                  if (again.ok) {
+                    const late = (await again.json()) as OrderResponse;
+                    if (late?.id) upsert(late);
+                  }
+                }, 2500);
+              }
+            }
           }
         }),
       );

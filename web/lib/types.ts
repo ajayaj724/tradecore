@@ -32,7 +32,8 @@ export interface CashBalance {
 export interface SubmitOrderRequest {
   symbol: string;
   side: Side;
-  price: number;
+  /** Paise. Omit for MARKET — the backend derives a collared protective cap. */
+  price?: number;
   quantity: number;
   type?: OrderType;
 }

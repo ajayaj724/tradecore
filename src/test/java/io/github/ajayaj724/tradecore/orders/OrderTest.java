@@ -10,7 +10,7 @@ class OrderTest {
     @Test
     void cancelledSetsStatusToCancelledAndKeepsFillProgress() {
         Order partiallyFilled = Order.newOrder("trader1", "ACME", Side.BUY, 10000L, 5L)
-                .accepted()
+                .accepted(10000L)
                 .withFill(2L);
 
         Order cancelled = partiallyFilled.cancelled();

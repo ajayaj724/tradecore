@@ -303,8 +303,9 @@ The backend trading path and the web frontend are both complete — LIMIT / capp
 orders, partial fills, four-eyes cancellation, cash and holdings settlement, positions, and
 reconciliation, driven from a per-user-authenticated Next.js UI ([`web/`](web/)). Remaining scope:
 
-- **AI/MCP layer** — the AI/MCP integration is a separate design, not yet started
-  ([design spec §10](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#10-delivery-phases)).
+- **AI/MCP layer** — a FastMCP server exposing the OMS to an LLM (query the book, trade the
+  demo account) is built in [`mcp/`](mcp/) ([ADR-0025](docs/adr/0025-mcp-server-demo-auth.md));
+  richer agent features (streaming, resources, per-user token passthrough) are future work.
 - **OWASP Dependency-Check** — wired into CI as a job that runs when an `NVD_API_KEY` repository
   secret is set (Trivy already scans the image for CVEs on every build). Add the secret to enable it.
 - **Single-writer-per-symbol engine threading** — deferred; the engine is still `synchronized`

@@ -159,6 +159,8 @@ export function TradingScreen({
 
   // Hydrate the blotter from the backend (own history, or every account's book for ops).
   useEffect(() => {
+    // refreshOrders awaits a fetch before any setState, so there is no synchronous render cascade.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshOrders();
   }, [refreshOrders]);
 

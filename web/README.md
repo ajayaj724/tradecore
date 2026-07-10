@@ -11,9 +11,9 @@ scripts/up.sh && scripts/run.sh        # backend on :8080, Keycloak on :8081
 
 # 2. then the web app
 cd web
-npm install
+bun install
 cp .env.example .env.local             # then set AUTH_SECRET (e.g. `openssl rand -base64 32`)
-npm run dev                            # http://localhost:3000
+bun run dev                            # http://localhost:3000
 ```
 
 Sign in as a seeded demo user (`trader1`, `trader2`, `ops1` — password `demo`), then submit a LIMIT
@@ -46,11 +46,11 @@ client secret in the realm JSON is a local-demo throwaway.
 ## Test
 
 ```bash
-npm test          # vitest — token rotation + backend client units
-npm run lint
-npm run build
-npm run e2e       # Playwright — full flows (login, orders, four-eyes, admin) against the
-                  # running local stack: scripts/up.sh && scripts/run.sh, then npm run dev
+bun run test          # vitest — token rotation + backend client units
+bun run lint
+bun run build
+bun run e2e       # Playwright — full flows (login, orders, four-eyes, admin) against the
+                  # running local stack: scripts/up.sh && scripts/run.sh, then bun run dev
 ```
 
 ## Structure

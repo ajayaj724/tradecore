@@ -31,6 +31,16 @@ API — no CORS, and no secret in the page:
 Rejected: a browser-side password grant + a local CORS filter — two cross-origin surfaces
 (backend + Keycloak) to open instead of zero. Same-origin serving is strictly smaller.
 
+## Manage the application (control server)
+
+A browser page cannot run `scripts/*.sh`, so the **Manage** buttons need a tiny local process:
+`scripts/console.sh` (→ `scripts/console-server.mjs`, bun/node, no deps) binds `127.0.0.1:8090`,
+serves the console, **proxies** `/api`+`/local`+`/actuator` to the backend (so Operations stay
+same-origin), and runs a **fixed allowlist** of scripts by key on `POST /manage/{key}`
+(platform up/down/wipe, backend start/stop, UI start/stop, gate, smoke). No request data ever
+reaches a shell — only pre-declared commands run. Access it at `http://localhost:8090/console.html`;
+served from the backend instead, the Manage buttons degrade to a hint (the copy-commands still work).
+
 ## Consequences
 
 - The console is a genuine local control panel (place/cancel orders, read positions/balances

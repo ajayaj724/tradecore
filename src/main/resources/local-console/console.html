@@ -126,8 +126,13 @@
   </section>
 
   <section>
-    <h2>Manage the application</h2>
-    <div class="grid" id="scripts"></div>
+    <h2>Manage the application <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(buttons run scripts via the control server — <code>scripts/console.sh</code>)</span></h2>
+    <div class="card" style="gap:12px">
+      <div id="mng-status" class="desc">checking control server…</div>
+      <div id="mng-buttons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <pre id="mng-out" style="margin:0;background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;font:12.5px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--text);max-height:300px;display:none"></pre>
+    </div>
+    <div class="grid" id="scripts" style="margin-top:16px"></div>
   </section>
 
   <section>
@@ -307,6 +312,39 @@
       } catch (err) {
         show("error", String(err));
       }
+    });
+  })();
+
+  // Management panel — only works when the console is served by the control server
+  // (scripts/console.sh), which runs the scripts. Served from the backend, /manage/* 404s.
+  (function () {
+    const statusEl = document.getElementById("mng-status");
+    const btnWrap = document.getElementById("mng-buttons");
+    const out = document.getElementById("mng-out");
+    const show = (t) => { out.style.display = "block"; out.textContent = t; };
+    const destructive = new Set(["wipe", "backend-stop", "ui-stop", "platform-down"]);
+    async function run(key, label) {
+      if (destructive.has(key) && !confirm(label + " — sure?")) return;
+      show(label + " …");
+      try {
+        const r = await fetch("/manage/" + key, { method: "POST" });
+        const j = await r.json();
+        show((j.status || ("exit " + (j.code ?? "?"))) + "\n\n" + (j.output || j.error || "").slice(-4000));
+      } catch (e) { show("failed: " + e); }
+    }
+    fetch("/manage/status").then((r) => (r.ok ? r.json() : Promise.reject())).then((s) => {
+      statusEl.innerHTML = `backend: <b style="color:${s.backend === "up" ? "var(--green)" : "var(--red)"}">${s.backend}</b> · click to run`;
+      btnWrap.innerHTML = "";
+      s.actions.forEach(({ key, label }) => {
+        const b = document.createElement("button");
+        b.className = "opbtn";
+        b.textContent = label;
+        if (destructive.has(key)) b.style.borderColor = "var(--red)";
+        b.onclick = () => run(key, label);
+        btnWrap.appendChild(b);
+      });
+    }).catch(() => {
+      statusEl.innerHTML = `<span class="note">Control server not running — the copy-commands below still work. Start it with</span> <code>scripts/console.sh</code> <span class="note">then open</span> <code>http://localhost:8090/console.html</code>.`;
     });
   })();
 

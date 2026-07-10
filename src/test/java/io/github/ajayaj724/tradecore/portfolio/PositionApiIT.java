@@ -35,6 +35,15 @@ class PositionApiIT {
     }
 
     @Test
+    void tradersHoldTheSeededInfyOpeningPosition() throws Exception {
+        // V15 seeds 1000 INFY at the opening price; no IT trades INFY, so it stays at the seed.
+        mvc.perform(get("/api/v1/positions").with(trader("trader1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.symbol == 'INFY')].quantity").value(1000))
+                .andExpect(jsonPath("$[?(@.symbol == 'INFY')].totalCost").value(150000000));
+    }
+
+    @Test
     void listsTheCallersPositionsWithIntegerPnl() throws Exception {
         // 10 shares at total cost 100000 (avg 10000); marked at 11000 → unrealized 10*11000-100000.
         jdbc.sql("insert into portfolio.position (account, symbol, total_qty, total_cost, realized_pnl)"

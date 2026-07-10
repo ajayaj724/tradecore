@@ -75,13 +75,18 @@
   footer { max-width: 1100px; margin: 40px auto 0; color: var(--muted); font-size: 12.5px;
            border-top: 1px solid var(--border); padding-top: 16px; }
   .note { color: var(--amber); }
+  .opbtn { cursor: pointer; border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+           border-radius: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; }
+  .opbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .opbtn:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
 <header>
   <h1>tradecore <span class="tag">· local dev console</span></h1>
-  <p class="sub">A launcher and cheat-sheet for the backend. Links open the local stack; every command
-    has a copy button. Nothing here runs code in the browser — the scripts are copied for your terminal.</p>
+  <p class="sub">A launcher, cheat-sheet, and control panel for the backend. Links open the local stack,
+    every command has a copy button, and the <b>Operations</b> panel runs real calls against the app —
+    served same-origin from <code>:8080</code> under the local profile, so no CORS and no secrets in the page.</p>
   <div class="quickstart">
     <span><b>Start:</b>&nbsp; <code>scripts/up.sh</code> &nbsp;→&nbsp; <code>scripts/run.sh</code></span>
     <span><b>Then:</b>&nbsp; open Swagger UI, or copy an API call below</span>
@@ -93,6 +98,31 @@
   <section>
     <h2>Services <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(live dot = reachable)</span></h2>
     <div class="grid" id="services"></div>
+  </section>
+
+  <section>
+    <h2>Operations <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(runs against the live app — pick a user, sign in, then click)</span></h2>
+    <div class="card" style="gap:14px">
+      <div class="cmd" style="background:var(--panel2);flex-wrap:wrap;gap:10px">
+        <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">Act as
+          <select id="op-user" style="background:var(--code);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px">
+            <option>trader1</option><option>trader2</option><option>ops1</option><option>ops2</option><option>admin1</option>
+          </select>
+        </label>
+        <button id="op-signin" class="opbtn">Sign in</button>
+        <span id="op-who" class="desc"></span>
+      </div>
+      <div id="op-buttons" style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="opbtn" data-op="positions">Positions</button>
+        <button class="opbtn" data-op="balances">Balances</button>
+        <button class="opbtn" data-op="orders">My orders</button>
+        <button class="opbtn" data-op="buy-limit">Buy 5 ACME @ ₹100 (LIMIT)</button>
+        <button class="opbtn" data-op="buy-market">Buy 5 ACME (MARKET)</button>
+        <button class="opbtn" data-op="sell-limit">Sell 5 ACME @ ₹90 (LIMIT)</button>
+        <button class="opbtn" data-op="cancel">Cancel order by id…</button>
+      </div>
+      <pre id="op-out" style="margin:0;background:var(--code);border:1px solid var(--border);border-radius:8px;padding:12px;overflow-x:auto;font:12.5px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--text);max-height:340px">Pick a user and sign in to begin.</pre>
+    </div>
   </section>
 
   <section>
@@ -123,7 +153,8 @@
 </main>
 
 <footer>
-  Generated dev console · lives at <code>tools/console.html</code>. Ports are loopback-bound
+  Dev console · served by the app at <code>/console.html</code> (local profile) from
+  <code>src/main/resources/local-console/</code>. Ports are loopback-bound
   (<code>127.0.0.1</code>). Keycloak admin console is <code>admin</code>/<code>admin</code>.
   See <code>README.md</code>, <code>CONTRIBUTING.md</code>, and <code>docs/adr/</code> for the full story.
 </footer>
@@ -135,7 +166,8 @@
     { name: "Swagger UI", url: APP + "/swagger-ui.html", desc: "Interactive API docs — public", ping: true },
     { name: "OpenAPI JSON", url: APP + "/v3/api-docs", desc: "Raw OpenAPI 3 spec", ping: false },
     { name: "Prometheus scrape", url: APP + "/actuator/prometheus", desc: "App metrics — local profile only (ADR-0017)", ping: false },
-    { name: "Grafana", url: "http://localhost:3000", desc: "Dashboards (anonymous viewer)", ping: true },
+    { name: "Trading UI", url: "http://localhost:3000", desc: "The Next.js OMS app — per-user OIDC login", ping: true },
+    { name: "Grafana", url: "http://localhost:3001", desc: "Dashboards (anonymous viewer)", ping: true },
     { name: "Prometheus", url: "http://localhost:9090", desc: "Metrics server / query UI", ping: true },
     { name: "Tempo", url: "http://localhost:3200/status", desc: "Trace store — no browser UI; view traces in Grafana › Explore › Tempo", ping: true },
     { name: "Keycloak", url: "http://localhost:8081", desc: "Realm 'tradecore' — admin/admin", ping: true },
@@ -176,8 +208,9 @@
   const users = [
     ["trader1", "demo", "TRADER", "Seeded cash + ACME holdings"],
     ["trader2", "demo", "TRADER", "Seeded cash + ACME holdings"],
-    ["ops1", "demo", "OPS", "Can read any order"],
-    ["admin1", "demo", "ADMIN", "Admin role"],
+    ["ops1", "demo", "OPS", "All-accounts view; requests four-eyes cancels"],
+    ["ops2", "demo", "OPS", "Second approver for four-eyes cancels"],
+    ["admin1", "demo", "ADMIN", "Observe-only: all accounts + system health"],
   ];
 
   const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -223,6 +256,59 @@
       setTimeout(() => { b.textContent = "copy"; b.classList.remove("done"); }, 1200);
     });
   });
+
+  // Operations panel — same-origin calls; token minted server-side by /local/token/{user}.
+  (function () {
+    let token = null;
+    const out = document.getElementById("op-out");
+    const show = (label, data) => {
+      out.textContent = label + (data === undefined ? "" : "\n" + JSON.stringify(data, null, 2));
+    };
+    async function api(method, path, body) {
+      const headers = { Authorization: "Bearer " + token };
+      if (body) headers["Content-Type"] = "application/json";
+      if (method === "POST") headers["Idempotency-Key"] = crypto.randomUUID();
+      const r = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      const t = await r.text();
+      const d = t ? JSON.parse(t) : null;
+      if (!r.ok) throw new Error((d && (d.detail || d.title)) || "HTTP " + r.status);
+      return d;
+    }
+    document.getElementById("op-signin").addEventListener("click", async () => {
+      const u = document.getElementById("op-user").value;
+      try {
+        const j = await (await fetch("/local/token/" + u)).json();
+        token = j.access_token;
+        document.getElementById("op-who").textContent = "signed in as " + u;
+        show("signed in as " + u + " — click an operation above");
+      } catch (e) {
+        show("sign-in failed", String(e));
+      }
+    });
+    document.getElementById("op-buttons").addEventListener("click", async (e) => {
+      const b = e.target.closest("button[data-op]");
+      if (!b) return;
+      if (!token) return show("sign in first (pick a user, then Sign in)");
+      try {
+        const op = b.dataset.op;
+        if (op === "positions") show("positions", await api("GET", "/api/v1/positions"));
+        else if (op === "balances") show("balances", await api("GET", "/api/v1/balances"));
+        else if (op === "orders") show("my orders", await api("GET", "/api/v1/orders"));
+        else if (op === "buy-limit")
+          show("submitted", await api("POST", "/api/v1/orders", { symbol: "ACME", side: "BUY", price: 10000, quantity: 5, type: "LIMIT" }));
+        else if (op === "buy-market")
+          show("submitted", await api("POST", "/api/v1/orders", { symbol: "ACME", side: "BUY", quantity: 5, type: "MARKET" }));
+        else if (op === "sell-limit")
+          show("submitted", await api("POST", "/api/v1/orders", { symbol: "ACME", side: "SELL", price: 9000, quantity: 5, type: "LIMIT" }));
+        else if (op === "cancel") {
+          const id = prompt("Order id to cancel?");
+          if (id) show("cancel " + id, await api("POST", "/api/v1/orders/" + id + "/cancel"));
+        }
+      } catch (err) {
+        show("error", String(err));
+      }
+    });
+  })();
 
   // live reachability dots (no-cors: resolve = reachable, reject = down)
   function ping(url, dot) {

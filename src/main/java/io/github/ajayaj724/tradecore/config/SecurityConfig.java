@@ -26,7 +26,8 @@ class SecurityConfig {
     SecurityFilterChain filterChain(
             HttpSecurity http,
             ProblemDetailsAuthHandlers handlers,
-            @Value("${tradecore.security.expose-prometheus-scrape:false}") boolean exposePrometheusScrape)
+            @Value("${tradecore.security.expose-prometheus-scrape:false}") boolean exposePrometheusScrape,
+            @Value("${tradecore.security.expose-local-console:false}") boolean exposeLocalConsole)
             throws Exception {
         return http.csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(
@@ -37,6 +38,10 @@ class SecurityConfig {
                     if (exposePrometheusScrape) {
                         // secured by default; opened only under the local profile for the compose scraper (ADR-0017)
                         auth.requestMatchers("/actuator/prometheus").permitAll();
+                    }
+                    if (exposeLocalConsole) {
+                        // local dev console + its demo-token minter — local profile only (ADR-0026)
+                        auth.requestMatchers("/console.html", "/local/**").permitAll();
                     }
                     // OpenAPI docs + Swagger UI are a sanctioned unauthenticated exception
                     auth.requestMatchers(

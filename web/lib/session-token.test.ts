@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { rotateToken, type RefreshConfig } from "./session-token";
+import { realmRoles, rotateToken, type RefreshConfig } from "./session-token";
 
 const config: RefreshConfig = {
   tokenEndpoint: "http://kc.test/realms/tradecore/protocol/openid-connect/token",
@@ -91,5 +91,23 @@ describe("rotateToken", () => {
     const expired = { access_token: "at-1", expires_at: sec(NOW) - 10 };
     const token = await rotateToken(expired, null, config, fetchNever, now);
     expect(token.error).toBe("RefreshTokenError");
+  });
+});
+
+describe("realmRoles", () => {
+  const jwtWith = (payload: unknown) =>
+    `header.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.sig`;
+
+  it("extractsKeycloakRealmRolesFromTheAccessToken", () => {
+    const token = jwtWith({ realm_access: { roles: ["TRADER", "offline_access"] } });
+    expect(realmRoles(token)).toEqual(["TRADER", "offline_access"]);
+  });
+
+  it("returnsNoRolesWhenTheClaimIsAbsent", () => {
+    expect(realmRoles(jwtWith({ sub: "x" }))).toEqual([]);
+  });
+
+  it("returnsNoRolesForAMalformedToken", () => {
+    expect(realmRoles("not-a-jwt")).toEqual([]);
   });
 });

@@ -9,11 +9,16 @@ import { LifecycleRail, StatTile } from "@/components/ui";
 
 export function TradingScreen({
   username,
+  roles,
   signOutAction,
 }: {
   username: string;
+  roles: string[];
   signOutAction: () => Promise<void>;
 }) {
+  const isOps = roles.includes("OPS");
+  const canTrade = roles.includes("TRADER");
+  const [scope, setScope] = useState<"own" | "all">("own");
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -63,17 +68,17 @@ export function TradingScreen({
     [refreshBalance],
   );
 
-  // Hydrate the blotter with this account's order history (newest first from the backend).
+  // Hydrate the blotter from the backend (own history, or every account's book for ops).
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/orders");
+      const res = await fetch(`/api/orders${scope === "all" ? "?scope=all" : ""}`);
       if (res.ok) {
         const history = (await res.json()) as OrderResponse[];
         if (Array.isArray(history)) setOrders(history);
       }
       await refreshBalance();
     })();
-  }, [refreshBalance]);
+  }, [refreshBalance, scope]);
 
   // Poll working orders — the backend settles asynchronously, so status/fills arrive over time.
   useEffect(() => {
@@ -108,7 +113,24 @@ export function TradingScreen({
           tradecore<span className="text-gold">.</span>
         </span>
         <nav className="flex gap-4 text-[12.5px] text-ink3">
-          <span className="font-semibold text-ink">Orders</span>
+          {isOps ? (
+            <>
+              <button
+                onClick={() => setScope("own")}
+                className={scope === "own" ? "font-semibold text-ink" : "hover:text-ink2"}
+              >
+                My orders
+              </button>
+              <button
+                onClick={() => setScope("all")}
+                className={scope === "all" ? "font-semibold text-ink" : "hover:text-ink2"}
+              >
+                All accounts
+              </button>
+            </>
+          ) : (
+            <span className="font-semibold text-ink">Orders</span>
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-3 text-[12.5px] font-semibold">
           <span className="grid h-6 w-6 place-items-center rounded-full bg-goldbg text-[11px] font-extrabold text-gold">
@@ -128,8 +150,8 @@ export function TradingScreen({
 
       <div className="grid grid-cols-[320px_1fr] items-start">
         <div className="min-h-[520px] border-r border-line2 p-5">
-          <OrderTicket onSubmit={submit} busy={busy} />
-          <div className="mt-6 grid grid-cols-2 gap-2.5">
+          {canTrade && <OrderTicket onSubmit={submit} busy={busy} />}
+          <div className={`grid grid-cols-2 gap-2.5 ${canTrade ? "mt-6" : ""}`}>
             <StatTile label="Available" value={balance ? rupees(balance.available) : "—"} />
             <StatTile label="Reserved" value={balance ? rupees(balance.held) : "—"} />
             <StatTile label="Working" value={String(workingCount)} />
@@ -138,8 +160,15 @@ export function TradingScreen({
         </div>
 
         <div className="p-5 pr-6">
-          <p className="eyebrow mb-3">Blotter</p>
-          <Blotter orders={orders} selectedId={selectedId} onSelect={setSelectedId} onCancel={cancel} />
+          <p className="eyebrow mb-3">{scope === "all" ? "Blotter — all accounts" : "Blotter"}</p>
+          <Blotter
+            orders={orders}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onCancel={cancel}
+            showAccount={scope === "all"}
+            readOnly={scope === "all"}
+          />
 
           {selected && (
             <div className="mt-6 rounded-[4px] border border-line bg-panel p-4">

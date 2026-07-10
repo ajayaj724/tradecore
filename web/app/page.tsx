@@ -15,6 +15,7 @@ export default async function Page() {
   return (
     <TradingScreen
       username={session.username ?? session.user?.name ?? "trader"}
+      roles={session.roles ?? []}
       signOutAction={signOutAction}
     />
   );

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -59,11 +60,23 @@ class OrderController {
     @GetMapping
     @PreAuthorize("hasAnyRole('TRADER','OPS')")
     ResponseEntity<List<OrderResponse>> list(
-            @AuthenticationPrincipal Jwt jwt, @RequestParam(name = "limit", defaultValue = "50") int limit) {
+            Authentication authentication,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(name = "scope", defaultValue = "own") String scope,
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
-        return ResponseEntity.ok(service.history(account, Math.clamp(limit, 1, 200)).stream()
-                .map(OrderResponse::from)
-                .toList());
+        int capped = Math.clamp(limit, 1, 200);
+        List<Order> rows;
+        if ("all".equals(scope)) {
+            boolean isOps = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OPS".equals(a.getAuthority()));
+            if (!isOps) {
+                throw new AccessDeniedException("scope=all requires the OPS role");
+            }
+            rows = service.historyAllAccounts(capped);
+        } else {
+            rows = service.history(account, capped);
+        }
+        return ResponseEntity.ok(rows.stream().map(OrderResponse::from).toList());
     }
 
     @GetMapping("/{id}")

@@ -237,6 +237,11 @@ class OrderService {
     }
 
     @Transactional(readOnly = true)
+    List<Order> historyAllAccounts(int limit) {
+        return orders.findAllByOrderByIdDesc(Limit.of(limit));
+    }
+
+    @Transactional(readOnly = true)
     Order findForViewer(long id, String account, boolean isOps) {
         Order order = orders.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
         if (!isOps && !order.account().equals(account)) {

@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.ajayaj724.tradecore.TestcontainersConfig;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +34,10 @@ class OrderHistoryIT {
 
     private static RequestPostProcessor trader(String username) {
         return jwt().jwt(j -> j.claim("preferred_username", username)).authorities(createAuthorityList("ROLE_TRADER"));
+    }
+
+    private static RequestPostProcessor ops(String username) {
+        return jwt().jwt(j -> j.claim("preferred_username", username)).authorities(createAuthorityList("ROLE_OPS"));
     }
 
     private void submit(String account, String idempotencyKey) throws Exception {
@@ -69,6 +74,35 @@ class OrderHistoryIT {
         long first = ((Number) JsonPath.read(body, "$[0].id")).longValue();
         long second = ((Number) JsonPath.read(body, "$[1].id")).longValue();
         assertThat(first).isGreaterThan(second);
+    }
+
+    @Test
+    void opsSeesEveryAccountsOrdersWithScopeAll() throws Exception {
+        submit("hist-all-a", "hist-a1");
+        submit("hist-all-b", "hist-b1");
+
+        String body = mvc.perform(get("/api/v1/orders").with(ops("hist-ops")).param("scope", "all"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        List<String> accounts = JsonPath.read(body, "$[*].account");
+        assertThat(accounts).contains("hist-all-a", "hist-all-b");
+    }
+
+    @Test
+    void traderIsRefusedScopeAll() throws Exception {
+        mvc.perform(get("/api/v1/orders").with(trader("hist-owner")).param("scope", "all"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void scopeDefaultsToTheCallersOwnOrders() throws Exception {
+        submit("hist-someone", "hist-s1");
+
+        mvc.perform(get("/api/v1/orders").with(ops("hist-ops-own")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test

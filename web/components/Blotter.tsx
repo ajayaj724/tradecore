@@ -9,11 +9,15 @@ export function Blotter({
   selectedId,
   onSelect,
   onCancel,
+  showAccount = false,
+  readOnly = false,
 }: {
   orders: OrderResponse[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onCancel: (id: number) => void;
+  showAccount?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <div className="overflow-hidden rounded-[4px] border border-line bg-panel">
@@ -21,6 +25,7 @@ export function Blotter({
         <thead>
           <tr className="bg-[#f1eee6] text-[9px] uppercase tracking-[0.1em] text-ink3">
             <th className="px-3.5 py-2.5 text-left font-bold">Order</th>
+            {showAccount && <th className="px-3.5 py-2.5 text-left font-bold">Account</th>}
             <th className="px-3.5 py-2.5 text-left font-bold">Side</th>
             <th className="px-3.5 py-2.5 text-left font-bold">Type</th>
             <th className="px-3.5 py-2.5 text-right font-bold">Price</th>
@@ -32,8 +37,8 @@ export function Blotter({
         <tbody>
           {orders.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-3.5 py-8 text-center text-ink3">
-                No orders yet. Place one from the ticket.
+              <td colSpan={showAccount ? 8 : 7} className="px-3.5 py-8 text-center text-ink3">
+                {readOnly ? "No orders on the book." : "No orders yet. Place one from the ticket."}
               </td>
             </tr>
           )}
@@ -44,6 +49,7 @@ export function Blotter({
               className={`cursor-pointer border-t border-line ${selectedId === o.id ? "bg-goldbg" : ""}`}
             >
               <td className="num px-3.5 py-2.5 text-ink3">#{o.id}</td>
+              {showAccount && <td className="px-3.5 py-2.5 font-semibold">{o.account}</td>}
               <td className={`px-3.5 py-2.5 font-bold ${o.side === "BUY" ? "text-buy" : "text-sell"}`}>{o.side}</td>
               <td className="px-3.5 py-2.5 text-ink2">{/* type is not returned by the API */}—</td>
               <td className="num px-3.5 py-2.5 text-right">{rupees(o.price).replace("₹", "")}</td>
@@ -54,7 +60,7 @@ export function Blotter({
                 <StatusBadge status={o.status} fill={o.quantity ? o.filledQty / o.quantity : 0} />
               </td>
               <td className="px-3.5 py-2.5 text-right">
-                {isWorking(o.status) ? (
+                {isWorking(o.status) && !readOnly ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

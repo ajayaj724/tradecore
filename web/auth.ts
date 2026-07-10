@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Keycloak from "next-auth/providers/keycloak";
-import { rotateToken, type RefreshConfig, type TokenBundle } from "@/lib/session-token";
+import { realmRoles, rotateToken, type RefreshConfig, type TokenBundle } from "@/lib/session-token";
 
 // Per-user OIDC login for the BFF: Authorization Code + PKCE against the local Keycloak
 // realm. The user's access token lives only inside the encrypted session cookie (JWE);
@@ -28,12 +28,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (typeof profile?.preferred_username === "string") {
         rotated.username = profile.preferred_username;
       }
+      // App roles steer the UI only (ops blotter, ticket visibility); the backend
+      // authorizes every call from the validated JWT, never from the session.
+      if (account?.access_token) {
+        rotated.roles = realmRoles(account.access_token).filter((r) =>
+          ["TRADER", "OPS", "ADMIN"].includes(r),
+        );
+      }
       return rotated as JWT;
     },
     session({ session, token }) {
       const t = token as TokenBundle;
       session.accessToken = t.error ? undefined : t.access_token;
       session.username = typeof t.username === "string" ? t.username : undefined;
+      session.roles = Array.isArray(t.roles) ? (t.roles as string[]) : [];
       session.error = t.error;
       return session;
     },
@@ -57,6 +65,7 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     username?: string;
+    roles?: string[];
     error?: "RefreshTokenError";
   }
 }

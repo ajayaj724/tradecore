@@ -25,7 +25,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     volumes:
       - ./infra/keycloak/tradecore-realm.json:/opt/keycloak/data/import/tradecore-realm.json:ro
-    ports: ["127.0.0.1:8081:8080"]
+    # Both loopback stacks: Node ≥20 resolves `localhost` to ::1 first, so the BFF's OIDC
+    # discovery needs the IPv6 binding too; still never exposed beyond this machine.
+    ports: ["127.0.0.1:8081:8080", "[::1]:8081:8080"]
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.155.0

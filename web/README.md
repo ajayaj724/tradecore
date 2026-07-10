@@ -12,28 +12,54 @@ scripts/up.sh && scripts/run.sh        # backend on :8080, Keycloak on :8081
 # 2. then the web app
 cd web
 npm install
+cp .env.example .env.local             # then set AUTH_SECRET (e.g. `openssl rand -base64 32`)
 npm run dev                            # http://localhost:3000
 ```
 
-Submit a LIMIT or MARKET order from the ticket; watch it walk the lifecycle rail and settle in the
-blotter. A resting order can be cancelled inline.
+Sign in as a seeded demo user (`trader1`, `trader2`, `ops1` — password `demo`), then submit a LIMIT
+or MARKET order from the ticket; watch it walk the lifecycle rail and settle in the blotter. A
+resting order can be cancelled inline.
 
 ## Architecture — BFF, no CORS
 
 The browser only ever talks to Next.js. Route handlers under `app/api/orders/**` proxy to the
-backend **server-side** (`lib/backend.ts`), attaching a Keycloak bearer token that never reaches the
-client. The backend has no CORS config, so this server-to-server hop is what makes it work.
+backend **server-side** (`lib/backend.ts`), attaching the current user's bearer token; no token ever
+reaches the client. The backend has no CORS config, so this server-to-server hop is what makes it
+work.
 
-**Auth is dev-only:** the BFF fetches a token via Keycloak's password grant as a seeded demo user
-(`trader1/demo`, same as `scripts/token.sh`), configured in `.env` (see `.env.example`). Swap this
-for a proper OIDC login (e.g. per-user Authorization Code flow) before any non-local deployment.
+**Auth is per-user OIDC** (Auth.js v5 + Keycloak, Authorization Code + PKCE):
+
+- `auth.ts` — the Auth.js config: `tradecore-web` confidential client (registered in
+  `../infra/keycloak/tradecore-realm.json`), access/refresh tokens held in the encrypted session
+  cookie, refresh rotation in the `jwt` callback (`lib/session-token.ts`), and RP-initiated logout
+  so signing out also ends the Keycloak SSO session.
+- `proxy.ts` — optimistic gate: pages redirect to `/signin`, API calls get an RFC 9457 401. Real
+  enforcement is server-side: `lib/backend.ts` refuses to call out without a session token, and the
+  backend validates the JWT on every request.
+- `lib/http.ts` `rejectCrossOrigin` — CSRF defence on mutating route handlers, on top of the
+  SameSite session cookie.
+
+Env (see `.env.example`): `AUTH_SECRET`, `AUTH_KEYCLOAK_ISSUER`, `AUTH_KEYCLOAK_ID`,
+`AUTH_KEYCLOAK_SECRET`, `BACKEND_URL`. Secrets live in `.env.local` (gitignored); the checked-in
+client secret in the realm JSON is a local-demo throwaway.
+
+## Test
+
+```bash
+npm test          # vitest — token rotation + backend client units
+npm run lint
+npm run build
+```
 
 ## Structure
 
+- `auth.ts`, `proxy.ts`, `app/signin/` — OIDC login, session, route protection
 - `app/globals.css` — the Ledger Terminal tokens as a Tailwind v4 `@theme`
+- `components/TradingScreen.tsx` — the trading surface (header identity, ticket, blotter)
 - `components/ui.tsx` — `StatusBadge` (fill-arc), `LifecycleRail` (signature), `StatTile`
 - `components/OrderTicket.tsx`, `components/Blotter.tsx` — the interactive pieces
-- `lib/backend.ts` — server-side backend client + token cache
+- `lib/backend.ts` + `lib/backend-client.ts` — server-side backend client (per-user bearer)
+- `lib/session-token.ts` — OIDC access-token rotation for the `jwt` callback
 - `lib/types.ts` — types mirroring the backend contract; money helpers
 
 ## Scaffold limits (deliberate follow-ups)
@@ -44,3 +70,5 @@ for a proper OIDC login (e.g. per-user Authorization Code flow) before any non-l
 - **Single symbol (ACME)** and **no live cash figure** — there's no instruments or balances endpoint
   yet; "Reserved" is derived client-side from working orders.
 - Order **type isn't echoed** by the API response, so the blotter shows `—` for it.
+- **Roles aren't differentiated** — `ops1`/`admin1` see the same trader screen; role-aware views
+  arrive with the ops endpoints.

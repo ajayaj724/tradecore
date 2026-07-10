@@ -23,6 +23,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -74,7 +75,9 @@ class OrderService {
         if (!instruments.existsById(cmd.symbol())) {
             throw new UnknownSymbolException(cmd.symbol());
         }
-        Order created = orders.save(Order.newOrder(account, cmd.symbol(), cmd.side(), cmd.price(), cmd.quantity()));
+        // Unpriced MARKET orders persist with price 0 until risk supplies the effective cap.
+        Order created = orders.save(Order.newOrder(
+                account, cmd.symbol(), cmd.side(), Objects.requireNonNullElse(cmd.price(), 0L), cmd.quantity()));
         record(created, "SUBMITTED", principal);
         submitted.increment();
         rememberKey(cmd.idempotencyKey(), Objects.requireNonNull(created.id()));
@@ -82,7 +85,7 @@ class OrderService {
                 Objects.requireNonNull(created.id()), account, cmd.side(), cmd.symbol(), cmd.price(), cmd.quantity());
         return switch (decision) {
             case RiskDecision.Rejected r -> reject(created, r.reason(), principal);
-            case RiskDecision.Approved ignored -> accept(created, principal, cmd.type());
+            case RiskDecision.Approved a -> accept(created, principal, cmd.type(), a.effectiveUnitPrice());
         };
     }
 
@@ -111,8 +114,8 @@ class OrderService {
         return order;
     }
 
-    private Order accept(Order order, String principal, OrderType type) {
-        Order accepted = orders.save(order.accepted());
+    private Order accept(Order order, String principal, OrderType type, long effectivePrice) {
+        Order accepted = orders.save(order.accepted(effectivePrice));
         record(accepted, "ACCEPTED", principal);
         events.publishEvent(new OrderAccepted(
                 UUID.randomUUID(),
@@ -171,7 +174,10 @@ class OrderService {
      * untouched, which makes redelivery a no-op and lets a fill that won the race keep its FILLED
      * status. The {@code @Version} optimistic lock serialises concurrent redeliveries.
      */
-    @Transactional
+    // REQUIRES_NEW: the caller (an @ApplicationModuleListener) is itself transactional, and a
+    // version-conflict retry only works if each attempt commits independently of that outer,
+    // possibly rollback-only transaction.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     void applyCancel(OrderCancelled event) {
         Order order = orders.findById(event.orderId()).orElseThrow(() -> new OrderNotFoundException(event.orderId()));
         if (order.status() != OrderStatus.ACCEPTED && order.status() != OrderStatus.PARTIALLY_FILLED) {
@@ -181,7 +187,7 @@ class OrderService {
         record(cancelled, "CANCELLED", "system");
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     void applyTrade(TradeExecuted trade) {
         if (tradeAlreadyApplied(trade.eventId())) {
             return;

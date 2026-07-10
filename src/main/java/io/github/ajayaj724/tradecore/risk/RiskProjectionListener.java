@@ -3,6 +3,7 @@ package io.github.ajayaj724.tradecore.risk;
 import io.github.ajayaj724.tradecore.shared.CashPosted;
 import io.github.ajayaj724.tradecore.shared.HoldingsPosted;
 import io.github.ajayaj724.tradecore.shared.OrderCancelled;
+import io.github.ajayaj724.tradecore.shared.PriceUpdated;
 import io.github.ajayaj724.tradecore.shared.TradeExecuted;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
@@ -34,5 +35,10 @@ class RiskProjectionListener {
     @ApplicationModuleListener
     void onHoldingsPosted(HoldingsPosted event) {
         risk.applyHoldingsPosted(event);
+    }
+
+    @ApplicationModuleListener
+    void onPriceUpdated(PriceUpdated event) {
+        risk.applyPriceUpdated(event);
     }
 }

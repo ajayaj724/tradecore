@@ -23,8 +23,10 @@ record Order(
         return new Order(null, account, symbol, side, price, quantity, 0, OrderStatus.NEW, null, null);
     }
 
-    Order accepted() {
-        return new Order(id, account, symbol, side, price, quantity, filledQty, OrderStatus.ACCEPTED, null, version);
+    /** Accept at the effective price — the client's, or risk's collared cap for unpriced MARKET. */
+    Order accepted(long effectivePrice) {
+        return new Order(
+                id, account, symbol, side, effectivePrice, quantity, filledQty, OrderStatus.ACCEPTED, null, version);
     }
 
     Order rejected(String reason) {

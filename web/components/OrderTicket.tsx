@@ -20,11 +20,14 @@ export function OrderTicket({
   const value = priceNum * qtyNum;
   const buy = side === "BUY";
 
+  const market = type === "MARKET";
+
   async function place() {
     await onSubmit({
       symbol: "ACME",
       side,
-      price: Math.round(priceNum * 100), // ₹ → paise
+      // MARKET goes unpriced — risk derives a collared protective cap from the reference price.
+      ...(market ? {} : { price: Math.round(priceNum * 100) /* ₹ → paise */ }),
       quantity: qtyNum,
       type,
     });
@@ -62,21 +65,28 @@ export function OrderTicket({
         ))}
       </div>
 
-      <label className="mb-3 block">
-        <span className="mb-1.5 flex justify-between text-[9px] font-bold uppercase tracking-[0.1em] text-ink3">
-          <span>{type === "MARKET" ? "Cap price" : "Limit price"}</span>
-          <span>₹ / share</span>
-        </span>
-        <span className="relative block">
-          <span className="num pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink3">₹</span>
-          <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            inputMode="decimal"
-            className="num w-full rounded-[3px] border border-line2 bg-paper py-2.5 pl-6 pr-3 text-base outline-none focus:border-gold focus:outline-2 focus:outline-gold"
-          />
-        </span>
-      </label>
+      {market ? (
+        <p className="mb-3 rounded-[3px] border border-line bg-paper px-3 py-2.5 text-[11.5px] leading-relaxed text-ink2">
+          Fills immediately at the best book price, protected by a 5% collar over the reference
+          price. Unfilled quantity is cancelled.
+        </p>
+      ) : (
+        <label className="mb-3 block">
+          <span className="mb-1.5 flex justify-between text-[9px] font-bold uppercase tracking-[0.1em] text-ink3">
+            <span>Limit price</span>
+            <span>₹ / share</span>
+          </span>
+          <span className="relative block">
+            <span className="num pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink3">₹</span>
+            <input
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              inputMode="decimal"
+              className="num w-full rounded-[3px] border border-line2 bg-paper py-2.5 pl-6 pr-3 text-base outline-none focus:border-gold focus:outline-2 focus:outline-gold"
+            />
+          </span>
+        </label>
+      )}
 
       <label className="mb-4 block">
         <span className="mb-1.5 flex justify-between text-[9px] font-bold uppercase tracking-[0.1em] text-ink3">
@@ -93,10 +103,14 @@ export function OrderTicket({
 
       <button
         onClick={place}
-        disabled={busy || qtyNum <= 0 || priceNum <= 0}
+        disabled={busy || qtyNum <= 0 || (!market && priceNum <= 0)}
         className={`w-full rounded-[3px] py-3 text-sm font-bold text-white disabled:opacity-50 ${buy ? "bg-buy" : "bg-sell"}`}
       >
-        {busy ? "Placing…" : `${buy ? "Buy" : "Sell"} ${qtyNum} ACME · ₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+        {busy
+          ? "Placing…"
+          : market
+            ? `${buy ? "Buy" : "Sell"} ${qtyNum} ACME · at market`
+            : `${buy ? "Buy" : "Sell"} ${qtyNum} ACME · ₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
       </button>
       <p className="mt-2.5 text-center text-[11px] text-ink3">Pre-trade risk checks cash before the order rests.</p>
     </div>

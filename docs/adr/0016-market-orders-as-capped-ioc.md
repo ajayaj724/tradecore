@@ -1,6 +1,7 @@
 # ADR-0016: Market orders as capped immediate-or-cancel
 
-- Status: Accepted
+- Status: Accepted — the deferred *unpriced* market order is now implemented by
+  [ADR-0021](0021-unpriced-market-orders-collared-reference.md) (system-derived collar cap)
 - Date: 2026-07-09
 
 ## Context

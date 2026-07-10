@@ -15,6 +15,6 @@ class OrderCancelledListener {
 
     @ApplicationModuleListener
     void on(OrderCancelled event) {
-        service.applyCancel(event);
+        VersionConflictRetry.run(() -> service.applyCancel(event));
     }
 }

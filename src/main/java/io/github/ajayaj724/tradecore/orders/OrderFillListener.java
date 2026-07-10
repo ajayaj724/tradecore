@@ -15,6 +15,6 @@ class OrderFillListener {
 
     @ApplicationModuleListener
     void on(TradeExecuted trade) {
-        service.applyTrade(trade);
+        VersionConflictRetry.run(() -> service.applyTrade(trade));
     }
 }

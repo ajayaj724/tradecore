@@ -2,6 +2,7 @@ package io.github.ajayaj724.tradecore.orders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.ajayaj724.tradecore.shared.OrderType;
 import io.github.ajayaj724.tradecore.shared.Side;
 import org.junit.jupiter.api.Test;
 
@@ -9,7 +10,7 @@ class OrderTest {
 
     @Test
     void cancelledSetsStatusToCancelledAndKeepsFillProgress() {
-        Order partiallyFilled = Order.newOrder("trader1", "ACME", Side.BUY, 10000L, 5L)
+        Order partiallyFilled = Order.newOrder("trader1", "ACME", Side.BUY, OrderType.LIMIT, 10000L, 5L)
                 .accepted(10000L)
                 .withFill(2L);
 

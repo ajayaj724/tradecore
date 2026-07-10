@@ -1,4 +1,5 @@
 import type {
+  CancelRequestInfo,
   CashBalance,
   HealthReport,
   InstrumentInfo,
@@ -46,5 +47,8 @@ export function createBackend(
     instruments: () => call<InstrumentInfo[]>("GET", "/api/v1/instruments"),
     positions: () => call<PositionInfo[]>("GET", "/api/v1/positions"),
     reconciliation: () => call<HealthReport>("GET", "/api/v1/reconciliation"),
+    cancelRequests: () => call<CancelRequestInfo[]>("GET", "/api/v1/cancel-requests"),
+    approveCancelRequest: (id: number) => call<void>("POST", `/api/v1/cancel-requests/${id}/approve`),
+    declineCancelRequest: (id: number) => call<void>("POST", `/api/v1/cancel-requests/${id}/decline`),
   };
 }

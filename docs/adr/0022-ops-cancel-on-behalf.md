@@ -1,6 +1,7 @@
 # 0022: Ops cancel-on-behalf with audited principal
 
-- Status: accepted
+- Status: superseded by [ADR-0024](0024-maker-checker-cancellation.md) — ops cancellation
+  now requires a second approver; the audited-principal model introduced here carries over
 - Date: 2026-07-10
 - Supersedes the exclusion in [ADR-0020](0020-role-aware-ops-order-view.md)
 

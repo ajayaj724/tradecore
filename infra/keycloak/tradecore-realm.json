@@ -74,6 +74,19 @@
       "groups": []
     },
     {
+      "username": "ops2",
+      "firstName": "Ops",
+      "lastName": "Two",
+      "email": "ops2@tradecore.local",
+      "emailVerified": true,
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {},
+      "realmRoles": ["OPS"],
+      "groups": []
+    },
+    {
       "username": "admin1",
       "firstName": "Admin",
       "lastName": "One",

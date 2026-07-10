@@ -95,6 +95,22 @@ describe("createBackend", () => {
     expect(result.data).toEqual(report);
   });
 
+  it("listsAndDecidesCancelRequests", async () => {
+    const fetchFn = fetchReturning(200, []);
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    await backend.cancelRequests();
+    await backend.approveCancelRequest(7);
+    await backend.declineCancelRequest(8);
+    const urls = fetchFn.mock.calls.map((c) => (c as unknown as [string])[0]);
+    expect(urls).toEqual([
+      `${BASE}/api/v1/cancel-requests`,
+      `${BASE}/api/v1/cancel-requests/7/approve`,
+      `${BASE}/api/v1/cancel-requests/8/decline`,
+    ]);
+    const approveInit = (fetchFn.mock.calls[1] as unknown as [string, RequestInit])[1];
+    expect(approveInit.method).toBe("POST");
+  });
+
   it("passesBackendStatusAndBodyThrough", async () => {
     const fetchFn = fetchReturning(422, { title: "Insufficient cash" });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

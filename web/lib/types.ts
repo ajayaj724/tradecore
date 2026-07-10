@@ -38,6 +38,16 @@ export interface PositionInfo {
   unrealizedPnl: number;
 }
 
+/** Mirrors the backend CancelRequestResponse (four-eyes ops cancellation). */
+export interface CancelRequestInfo {
+  id: number;
+  orderId: number;
+  account: string;
+  symbol: string;
+  requestedBy: string;
+  status: string;
+}
+
 /** Mirrors the backend ReconciliationReport. Paise; driftPairs 0 = healthy. */
 export interface HealthReport {
   driftPairs: number;

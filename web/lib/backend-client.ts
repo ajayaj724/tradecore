@@ -1,4 +1,4 @@
-import type { OrderResponse, SubmitOrderRequest } from "./types";
+import type { CashBalance, OrderResponse, SubmitOrderRequest } from "./types";
 
 // Pure backend HTTP client. The access token of the *current user* is supplied per call by
 // the injected getToken — no ambient service credential exists anywhere in the web tier.
@@ -35,5 +35,6 @@ export function createBackend(
     cancel: (id: number) => call<OrderResponse>("POST", `/api/v1/orders/${id}/cancel`),
     get: (id: number) => call<OrderResponse>("GET", `/api/v1/orders/${id}`),
     list: () => call<OrderResponse[]>("GET", "/api/v1/orders"),
+    balance: () => call<CashBalance>("GET", "/api/v1/balances"),
   };
 }

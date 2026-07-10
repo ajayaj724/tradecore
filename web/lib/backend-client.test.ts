@@ -49,6 +49,15 @@ describe("createBackend", () => {
     expect(result.data).toEqual([{ id: 2 }, { id: 1 }]);
   });
 
+  it("fetchesTheCurrentUsersCashBalance", async () => {
+    const fetchFn = fetchReturning(200, { account: "t1", settled: 500000, held: 100000, available: 400000 });
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    const result = await backend.balance();
+    const [url] = fetchFn.mock.calls[0] as unknown as [string];
+    expect(url).toBe(`${BASE}/api/v1/balances`);
+    expect(result.data).toEqual({ account: "t1", settled: 500000, held: 100000, available: 400000 });
+  });
+
   it("passesBackendStatusAndBodyThrough", async () => {
     const fetchFn = fetchReturning(422, { title: "Insufficient cash" });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

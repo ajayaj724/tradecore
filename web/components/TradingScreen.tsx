@@ -72,10 +72,15 @@ export function TradingScreen({
 
   const cancel = useCallback(
     async (id: number) => {
+      if (scope === "all") {
+        // Cancelling on behalf of another account is deliberate, never a misclick (ADR-0022).
+        const target = orders.find((o) => o.id === id);
+        if (!window.confirm(`Cancel order #${id} for ${target?.account ?? "this account"}?`)) return;
+      }
       await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
       await refreshBalance();
     },
-    [refreshBalance],
+    [refreshBalance, scope, orders],
   );
 
   // Tradable instruments are reference data — one fetch per screen.
@@ -189,7 +194,6 @@ export function TradingScreen({
             onSelect={setSelectedId}
             onCancel={cancel}
             showAccount={scope === "all"}
-            readOnly={scope === "all"}
           />
 
           {positions.length > 0 && scope === "own" && (

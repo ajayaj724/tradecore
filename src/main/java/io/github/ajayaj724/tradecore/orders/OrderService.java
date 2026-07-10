@@ -100,9 +100,9 @@ class OrderService {
      * status is applied later via {@link #applyCancel} when execution answers with {@code OrderCancelled}.
      */
     @Transactional
-    Order cancel(long id, String account, String principal) {
+    Order cancel(long id, String account, String principal, boolean onBehalf) {
         Order order = orders.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
-        if (!order.account().equals(account)) {
+        if (!onBehalf && !order.account().equals(account)) {
             throw new OrderNotFoundException(id); // do not leak existence to non-owners
         }
         if (order.status() != OrderStatus.ACCEPTED && order.status() != OrderStatus.PARTIALLY_FILLED) {

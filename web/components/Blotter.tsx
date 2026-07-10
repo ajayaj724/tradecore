@@ -10,14 +10,12 @@ export function Blotter({
   onSelect,
   onCancel,
   showAccount = false,
-  readOnly = false,
 }: {
   orders: OrderResponse[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onCancel: (id: number) => void;
   showAccount?: boolean;
-  readOnly?: boolean;
 }) {
   return (
     <div className="overflow-hidden rounded-[4px] border border-line bg-panel">
@@ -39,7 +37,7 @@ export function Blotter({
           {orders.length === 0 && (
             <tr>
               <td colSpan={showAccount ? 9 : 8} className="px-3.5 py-8 text-center text-ink3">
-                {readOnly ? "No orders on the book." : "No orders yet. Place one from the ticket."}
+                {showAccount ? "No orders on the book." : "No orders yet. Place one from the ticket."}
               </td>
             </tr>
           )}
@@ -62,7 +60,7 @@ export function Blotter({
                 <StatusBadge status={o.status} fill={o.quantity ? o.filledQty / o.quantity : 0} />
               </td>
               <td className="px-3.5 py-2.5 text-right">
-                {isWorking(o.status) && !readOnly ? (
+                {isWorking(o.status) ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

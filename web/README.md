@@ -64,8 +64,7 @@ npm run build
 
 ## Scaffold limits (deliberate follow-ups)
 
-- **Single symbol (ACME)** and **no live cash figure** — there's no instruments or balances endpoint
-  yet; "Reserved" is derived client-side from working orders.
+- **Single symbol (ACME)** — there's no instruments endpoint yet.
 - Order **type isn't echoed** by the API response, so the blotter shows `—` for it.
 - **Roles aren't differentiated** — `ops1`/`admin1` see the same trader screen; role-aware views
   arrive with the ops endpoints.

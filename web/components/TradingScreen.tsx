@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { OrderResponse, SubmitOrderRequest } from "@/lib/types";
+import type { CashBalance, OrderResponse, SubmitOrderRequest } from "@/lib/types";
 import { isTerminal, isWorking, rupees } from "@/lib/types";
 import { OrderTicket } from "@/components/OrderTicket";
 import { Blotter } from "@/components/Blotter";
@@ -15,8 +15,17 @@ export function TradingScreen({
   signOutAction: () => Promise<void>;
 }) {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const refreshBalance = useCallback(async () => {
+    const res = await fetch("/api/balances");
+    if (res.ok) {
+      const fresh = (await res.json()) as CashBalance;
+      if (typeof fresh?.available === "number") setBalance(fresh);
+    }
+  }, []);
 
   const upsert = (o: OrderResponse) =>
     setOrders((prev) => {
@@ -40,14 +49,19 @@ export function TradingScreen({
         upsert(order);
         setSelectedId(order.id);
       }
+      await refreshBalance();
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [refreshBalance]);
 
-  const cancel = useCallback(async (id: number) => {
-    await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
-  }, []);
+  const cancel = useCallback(
+    async (id: number) => {
+      await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
+      await refreshBalance();
+    },
+    [refreshBalance],
+  );
 
   // Hydrate the blotter with this account's order history (newest first from the backend).
   useEffect(() => {
@@ -57,8 +71,9 @@ export function TradingScreen({
         const history = (await res.json()) as OrderResponse[];
         if (Array.isArray(history)) setOrders(history);
       }
+      await refreshBalance();
     })();
-  }, []);
+  }, [refreshBalance]);
 
   // Poll working orders — the backend settles asynchronously, so status/fills arrive over time.
   useEffect(() => {
@@ -74,15 +89,13 @@ export function TradingScreen({
           }
         }),
       );
+      await refreshBalance(); // fills/cancels settle async, so cash moves between ticks
     }, 1500);
     return () => clearInterval(t);
-  }, [orders]);
+  }, [orders, refreshBalance]);
 
   const selected = orders.find((o) => o.id === selectedId) ?? null;
   const workingCount = orders.filter((o) => isWorking(o.status)).length;
-  const reserved = orders
-    .filter((o) => isWorking(o.status))
-    .reduce((sum, o) => sum + o.price * (o.quantity - o.filledQty), 0);
   const filledCount = orders.filter((o) => o.status === "FILLED").length;
 
   const initials =
@@ -117,10 +130,10 @@ export function TradingScreen({
         <div className="min-h-[520px] border-r border-line2 p-5">
           <OrderTicket onSubmit={submit} busy={busy} />
           <div className="mt-6 grid grid-cols-2 gap-2.5">
+            <StatTile label="Available" value={balance ? rupees(balance.available) : "—"} />
+            <StatTile label="Reserved" value={balance ? rupees(balance.held) : "—"} />
             <StatTile label="Working" value={String(workingCount)} />
-            <StatTile label="Reserved" value={rupees(reserved)} />
             <StatTile label="Filled" value={String(filledCount)} />
-            <StatTile label="Orders" value={String(orders.length)} />
           </div>
         </div>
 

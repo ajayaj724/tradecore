@@ -156,6 +156,18 @@ public class RiskService {
         markProcessed(event.eventId());
     }
 
+    /** Snapshot of the account's cash: settled, held by working orders, and the difference. */
+    @Transactional(readOnly = true)
+    CashBalance balanceOf(String account) {
+        long settled = settledCash(account);
+        long held = jdbc.sql(
+                        "select coalesce(sum(unit_price * remaining_qty), 0) from risk.cash_hold where account = :a")
+                .param("a", account)
+                .query(Long.class)
+                .single();
+        return new CashBalance(account, settled, held, settled - held);
+    }
+
     /** Settled cash for the account in paise (0 if the account has no settled row). */
     @Transactional(readOnly = true)
     public long settledCash(String account) {

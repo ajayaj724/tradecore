@@ -21,6 +21,14 @@ export interface OrderResponse {
   rejectReason: string | null;
 }
 
+/** Mirrors the backend CashBalance. Paise; available = settled - held. */
+export interface CashBalance {
+  account: string;
+  settled: number;
+  held: number;
+  available: number;
+}
+
 export interface SubmitOrderRequest {
   symbol: string;
   side: Side;

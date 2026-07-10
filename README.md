@@ -6,13 +6,19 @@ place, and the domain modules (`orders`, `risk`, `execution` + framework-free ma
 `marketdata`, `portfolio`, `ledger`, `reconciliation`) are built on top of it. Full design
 rationale lives in [`docs/superpowers/specs/2026-07-06-brokerage-oms-design.md`](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md).
 
-> **Status:** Phases 1–3 complete. Orders submit, risk-check, match, fill, settle, and **cancel**
-> end-to-end; **market orders** (capped immediate-or-cancel) and LIMIT orders are both supported.
-> See [What's not here yet](#whats-not-here-yet) for the remaining scope.
+> **Status:** Backend and web frontend both complete. Orders submit, risk-check, match, fill,
+> settle, and **cancel** end-to-end across two instruments; **LIMIT**, **capped-MARKET**, and
+> **true unpriced MARKET** (collared reference price, [ADR-0021](docs/adr/0021-unpriced-market-orders-collared-reference.md))
+> orders are supported. Read APIs expose order history, cash balances, positions with integer
+> P&L, and a reconciliation health report. Authorization is role-scoped: traders trade, **ops**
+> observe every account and cancel on behalf under **four-eyes approval**
+> ([ADR-0024](docs/adr/0024-maker-checker-cancellation.md)), **admins** observe read-only.
+> A Next.js frontend (per-user OIDC login) drives it all — see [`web/`](web/). See
+> [What's not here yet](#whats-not-here-yet) for the remaining scope.
 
 ## Demo credentials — local only
 
-The compose stack ships a pre-imported Keycloak realm with four throwaway users. These
+The compose stack ships a pre-imported Keycloak realm with five throwaway users. These
 exist **only** in the local `docker compose` stack, are never used outside it, and are
 intentionally allowlisted in [`.gitleaks.toml`](.gitleaks.toml) as non-secrets.
 
@@ -21,7 +27,10 @@ intentionally allowlisted in [`.gitleaks.toml`](.gitleaks.toml) as non-secrets.
 | `trader1` | `demo` | `TRADER` |
 | `trader2` | `demo` | `TRADER` |
 | `ops1` | `demo` | `OPS` |
+| `ops2` | `demo` | `OPS` |
 | `admin1` | `demo` | `ADMIN` |
+
+Two ops users so four-eyes cancellation (one requests, the other approves) can be demonstrated.
 
 Keycloak admin console: `admin` / `admin` at http://localhost:8081. Database: `tradecore` /
 `tradecore` at `localhost:5432`. **Do not reuse these anywhere else, and never point this
@@ -56,7 +65,12 @@ scripts/api.sh POST /api/v1/orders '{"symbol":"ACME","side":"BUY","price":10000,
 
 # read the buy back by its id — status FILLED, filledQty 5, matched through the embedded engine
 scripts/api.sh GET /api/v1/orders/<buyId> trader1
-# {"id":<buyId>,"symbol":"ACME","side":"BUY","price":10000,"quantity":5,"filledQty":5,"status":"FILLED"}
+# {"id":<buyId>,"account":"trader1","symbol":"ACME","side":"BUY","type":"LIMIT","price":10000,"quantity":5,"filledQty":5,"status":"FILLED"}
+
+# read models: your order history, cash (settled/held/available), positions (integer P&L)
+scripts/api.sh GET /api/v1/orders    trader1   # newest first; add ?scope=all as OPS/ADMIN
+scripts/api.sh GET /api/v1/balances  trader1
+scripts/api.sh GET /api/v1/positions trader1
 ```
 
 Prices and quantities are **minor units** (paise / whole shares) end-to-end — no floating
@@ -112,6 +126,13 @@ endpoint requires authentication except `/actuator/health`, the OpenAPI docs (se
 (locally only, see ADR-0002) `/actuator/prometheus`. Authentication and authorization failures
 render as RFC 9457 `application/problem+json`, not framework default HTML/JSON — see
 `ProblemDetailsAuthHandlers` and `GlobalExceptionHandler`.
+
+Authorization is role-scoped beyond authentication: **TRADER** submits and self-cancels its own
+orders; **OPS** reads every account (`?scope=all`) and requests cancellations that a *different*
+ops user must approve (four-eyes, [ADR-0024](docs/adr/0024-maker-checker-cancellation.md)); **ADMIN**
+reads everything and the reconciliation health report but mutates nothing
+([ADR-0023](docs/adr/0023-admin-observability-role.md)). The web tier never holds a shared token —
+each request forwards the logged-in user's own JWT ([ADR-0018](docs/adr/0018-web-per-user-oidc-authjs.md)).
 
 The API is documented with OpenAPI 3 (springdoc): the spec is at `/v3/api-docs` and interactive
 **Swagger UI at http://localhost:8080/swagger-ui.html** (both public). Swagger UI has an
@@ -278,18 +299,21 @@ Reference numbers on local hardware, JDK 25:
 
 ## What's not here yet
 
-The backend trading path is complete — LIMIT and MARKET orders, partial fills, cancellation, cash
-and holdings settlement, reconciliation. Remaining scope:
+The backend trading path and the web frontend are both complete — LIMIT / capped-MARKET / unpriced-MARKET
+orders, partial fills, four-eyes cancellation, cash and holdings settlement, positions, and
+reconciliation, driven from a per-user-authenticated Next.js UI ([`web/`](web/)). Remaining scope:
 
-- **Frontend + AI/MCP layer** — the Next.js dashboard and the AI/MCP integration are separate
-  designs, not yet started ([design spec §10](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#10-delivery-phases)).
+- **AI/MCP layer** — the AI/MCP integration is a separate design, not yet started
+  ([design spec §10](docs/superpowers/specs/2026-07-06-brokerage-oms-design.md#10-delivery-phases)).
 - **OWASP Dependency-Check** — wired into CI as a job that runs when an `NVD_API_KEY` repository
   secret is set (Trivy already scans the image for CVEs on every build). Add the secret to enable it.
 - **Single-writer-per-symbol engine threading** — deferred; the engine is still `synchronized`
-  ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md)). A *true unpriced* market
-  order is likewise deferred ([ADR-0016](docs/adr/0016-market-orders-as-capped-ioc.md)).
+  ([ADR-0004](docs/adr/0004-synchronous-engine-single-writer-deferred.md)).
 - Reconciliation reports the latest run only (no historical drift storage) and does not remediate
   drift or page on it — alerting on the emitted gauges is a deploy-time concern.
+- **Maker-checker for order amends, and ADMIN write actions** — cancellation has four-eyes; other
+  privileged mutations do not yet, and ADMIN remains observe-only by design
+  ([ADR-0023](docs/adr/0023-admin-observability-role.md)).
 - **Out of scope for v1** (by design): short selling, derivatives, GTC orders, partial
   cancels/amends, corporate actions, multi-currency, real user registration.
 

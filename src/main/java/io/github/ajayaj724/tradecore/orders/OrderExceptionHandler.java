@@ -5,8 +5,22 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = OrderController.class)
+@RestControllerAdvice(assignableTypes = {OrderController.class, CancelRequestController.class})
 class OrderExceptionHandler {
+
+    @ExceptionHandler(CancelRequestConflictException.class)
+    ProblemDetail handleCancelRequestConflict(CancelRequestConflictException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Cancel request conflict");
+        return problem;
+    }
+
+    @ExceptionHandler(CancelRequestNotFoundException.class)
+    ProblemDetail handleCancelRequestNotFound(CancelRequestNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Cancel request not found");
+        return problem;
+    }
 
     @ExceptionHandler(UnknownSymbolException.class)
     ProblemDetail handleUnknownSymbol(UnknownSymbolException ex) {

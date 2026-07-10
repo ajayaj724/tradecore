@@ -24,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 class OrderController {
 
     private final OrderService service;
+    private final CancelApprovalService approvals;
 
-    OrderController(OrderService service) {
+    OrderController(OrderService service, CancelApprovalService approvals) {
         this.service = service;
+        this.approvals = approvals;
     }
 
     @PostMapping
@@ -54,10 +56,13 @@ class OrderController {
     ResponseEntity<OrderResponse> cancel(
             Authentication authentication, @AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         String principal = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
-        // OPS may cancel on behalf of any account (ADR-0022); the audit row names the principal.
-        // 202: cancellation is accepted for async processing; the order reaches CANCELLED via event.
-        return ResponseEntity.accepted()
-                .body(OrderResponse.from(service.cancel(id, principal, principal, isOps(authentication))));
+        // An ops cancel is on someone else's behalf, so it parks a four-eyes request
+        // (ADR-0024); a trader's self-cancel executes immediately. 202 either way — the
+        // terminal CANCELLED status always arrives via events.
+        Order order = isOps(authentication)
+                ? approvals.request(id, principal)
+                : service.cancel(id, principal, principal, false);
+        return ResponseEntity.accepted().body(OrderResponse.from(order));
     }
 
     @GetMapping

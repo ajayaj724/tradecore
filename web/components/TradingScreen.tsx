@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
+  CancelRequestInfo,
   CashBalance,
   HealthReport,
   InstrumentInfo,
@@ -10,6 +11,7 @@ import type {
   SubmitOrderRequest,
 } from "@/lib/types";
 import { isTerminal, isWorking, rupees } from "@/lib/types";
+import { Approvals } from "@/components/Approvals";
 import { OrderTicket } from "@/components/OrderTicket";
 import { Blotter } from "@/components/Blotter";
 import { HealthPanel } from "@/components/HealthPanel";
@@ -34,6 +36,7 @@ export function TradingScreen({
   const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [positions, setPositions] = useState<PositionInfo[]>([]);
   const [health, setHealth] = useState<HealthReport | null>(null);
+  const [cancelRequests, setCancelRequests] = useState<CancelRequestInfo[]>([]);
   const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,7 +54,24 @@ export function TradingScreen({
         setPositions((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
       }
     }
-  }, []);
+    if (canViewAll) {
+      const reqs = await fetch("/api/cancel-requests");
+      if (reqs.ok) {
+        const fresh = (await reqs.json()) as CancelRequestInfo[];
+        if (Array.isArray(fresh)) {
+          setCancelRequests((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
+        }
+      }
+    }
+  }, [canViewAll]);
+
+  const decideCancelRequest = useCallback(
+    async (id: number, action: "approve" | "decline") => {
+      await fetch(`/api/cancel-requests/${id}/${action}`, { method: "POST" });
+      await refreshBalance();
+    },
+    [refreshBalance],
+  );
 
   const upsert = (o: OrderResponse) =>
     setOrders((prev) => {
@@ -84,9 +104,12 @@ export function TradingScreen({
   const cancel = useCallback(
     async (id: number) => {
       if (scope === "all") {
-        // Cancelling on behalf of another account is deliberate, never a misclick (ADR-0022).
+        // Ops cancels are four-eyes (ADR-0024): this parks a request for a second approver.
         const target = orders.find((o) => o.id === id);
-        if (!window.confirm(`Cancel order #${id} for ${target?.account ?? "this account"}?`)) return;
+        const who = target?.account ?? "this account";
+        if (!window.confirm(`Request cancellation of order #${id} for ${who}? A second ops user must approve.`)) {
+          return;
+        }
       }
       await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
       await refreshBalance();
@@ -222,6 +245,18 @@ export function TradingScreen({
             showAccount={scope === "all"}
             canCancel={scope === "all" ? isOps : canTrade}
           />
+
+          {canViewAll && (cancelRequests.length > 0 || isOps) && (
+            <div className="mt-6">
+              <p className="eyebrow mb-3">Cancellation approvals</p>
+              <Approvals
+                requests={cancelRequests}
+                me={username}
+                canDecide={isOps}
+                onDecide={decideCancelRequest}
+              />
+            </div>
+          )}
 
           {isAdmin && health && (
             <div className="mt-6">

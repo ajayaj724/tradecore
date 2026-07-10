@@ -26,6 +26,7 @@ export function Blotter({
           <tr className="bg-[#f1eee6] text-[9px] uppercase tracking-[0.1em] text-ink3">
             <th className="px-3.5 py-2.5 text-left font-bold">Order</th>
             {showAccount && <th className="px-3.5 py-2.5 text-left font-bold">Account</th>}
+            <th className="px-3.5 py-2.5 text-left font-bold">Symbol</th>
             <th className="px-3.5 py-2.5 text-left font-bold">Side</th>
             <th className="px-3.5 py-2.5 text-left font-bold">Type</th>
             <th className="px-3.5 py-2.5 text-right font-bold">Price</th>
@@ -37,7 +38,7 @@ export function Blotter({
         <tbody>
           {orders.length === 0 && (
             <tr>
-              <td colSpan={showAccount ? 8 : 7} className="px-3.5 py-8 text-center text-ink3">
+              <td colSpan={showAccount ? 9 : 8} className="px-3.5 py-8 text-center text-ink3">
                 {readOnly ? "No orders on the book." : "No orders yet. Place one from the ticket."}
               </td>
             </tr>
@@ -50,6 +51,7 @@ export function Blotter({
             >
               <td className="num px-3.5 py-2.5 text-ink3">#{o.id}</td>
               {showAccount && <td className="px-3.5 py-2.5 font-semibold">{o.account}</td>}
+              <td className="px-3.5 py-2.5 font-bold">{o.symbol}</td>
               <td className={`px-3.5 py-2.5 font-bold ${o.side === "BUY" ? "text-buy" : "text-sell"}`}>{o.side}</td>
               <td className="px-3.5 py-2.5 text-ink2">{o.type}</td>
               <td className="num px-3.5 py-2.5 text-right">{rupees(o.price).replace("₹", "")}</td>

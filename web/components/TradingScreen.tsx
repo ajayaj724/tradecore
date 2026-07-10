@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CashBalance, OrderResponse, SubmitOrderRequest } from "@/lib/types";
+import type { CashBalance, InstrumentInfo, OrderResponse, SubmitOrderRequest } from "@/lib/types";
 import { isTerminal, isWorking, rupees } from "@/lib/types";
 import { OrderTicket } from "@/components/OrderTicket";
 import { Blotter } from "@/components/Blotter";
@@ -20,6 +20,7 @@ export function TradingScreen({
   const canTrade = roles.includes("TRADER");
   const [scope, setScope] = useState<"own" | "all">("own");
   const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [instruments, setInstruments] = useState<InstrumentInfo[]>([]);
   const [balance, setBalance] = useState<CashBalance | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,49 +69,48 @@ export function TradingScreen({
     [refreshBalance],
   );
 
-  // Hydrate the blotter from the backend (own history, or every account's book for ops).
+  // Tradable instruments are reference data — one fetch per screen.
   useEffect(() => {
     (async () => {
-      const res = await fetch(`/api/orders${scope === "all" ? "?scope=all" : ""}`);
+      const res = await fetch("/api/instruments");
       if (res.ok) {
-        const history = (await res.json()) as OrderResponse[];
-        if (Array.isArray(history)) setOrders(history);
+        const list = (await res.json()) as InstrumentInfo[];
+        if (Array.isArray(list) && list.length) setInstruments(list);
       }
-      await refreshBalance();
     })();
-  }, [refreshBalance, scope]);
+  }, []);
 
-  // Poll working orders — the backend settles asynchronously, so status/fills arrive over time.
+  // One list request refreshes the whole blotter — per-order polling tripped the backend
+  // rate limit once an account had a handful of working orders.
+  const refreshOrders = useCallback(async () => {
+    const res = await fetch(`/api/orders${scope === "all" ? "?scope=all" : ""}`);
+    if (res.ok) {
+      const fresh = (await res.json()) as OrderResponse[];
+      if (Array.isArray(fresh)) {
+        // Keep the previous state object when nothing changed so effects don't re-fire.
+        setOrders((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
+      }
+    }
+    await refreshBalance();
+  }, [scope, refreshBalance]);
+
+  // Hydrate the blotter from the backend (own history, or every account's book for ops).
   useEffect(() => {
-    const working = orders.filter((o) => !isTerminal(o.status));
-    if (working.length === 0) return;
-    const t = setInterval(async () => {
-      await Promise.all(
-        working.map(async (o) => {
-          const res = await fetch(`/api/orders/${o.id}`);
-          if (res.ok) {
-            const fresh = (await res.json()) as OrderResponse;
-            if (fresh?.id) {
-              upsert(fresh);
-              // A partial market fill can book onto an already-terminal order moments after
-              // the status lands; polling stops at terminal, so take one late look.
-              if (isTerminal(fresh.status)) {
-                setTimeout(async () => {
-                  const again = await fetch(`/api/orders/${fresh.id}`);
-                  if (again.ok) {
-                    const late = (await again.json()) as OrderResponse;
-                    if (late?.id) upsert(late);
-                  }
-                }, 2500);
-              }
-            }
-          }
-        }),
-      );
-      await refreshBalance(); // fills/cancels settle async, so cash moves between ticks
-    }, 1500);
+    void refreshOrders();
+  }, [refreshOrders]);
+
+  // Poll while orders are working — the backend settles asynchronously. When the last one
+  // turns terminal, take a single late look: a partial market fill can book onto an
+  // already-cancelled order moments after the status lands.
+  useEffect(() => {
+    if (orders.length === 0) return;
+    if (orders.every((o) => isTerminal(o.status))) {
+      const late = setTimeout(() => void refreshOrders(), 2500);
+      return () => clearTimeout(late);
+    }
+    const t = setInterval(() => void refreshOrders(), 1500);
     return () => clearInterval(t);
-  }, [orders, refreshBalance]);
+  }, [orders, refreshOrders]);
 
   const selected = orders.find((o) => o.id === selectedId) ?? null;
   const workingCount = orders.filter((o) => isWorking(o.status)).length;
@@ -163,7 +163,7 @@ export function TradingScreen({
 
       <div className="grid grid-cols-[320px_1fr] items-start">
         <div className="min-h-[520px] border-r border-line2 p-5">
-          {canTrade && <OrderTicket onSubmit={submit} busy={busy} />}
+          {canTrade && <OrderTicket instruments={instruments} onSubmit={submit} busy={busy} />}
           <div className={`grid grid-cols-2 gap-2.5 ${canTrade ? "mt-6" : ""}`}>
             <StatTile label="Available" value={balance ? rupees(balance.available) : "—"} />
             <StatTile label="Reserved" value={balance ? rupees(balance.held) : "—"} />

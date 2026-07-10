@@ -1,19 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import type { Side, OrderType, SubmitOrderRequest } from "@/lib/types";
+import type { InstrumentInfo, Side, OrderType, SubmitOrderRequest } from "@/lib/types";
 
 export function OrderTicket({
+  instruments,
   onSubmit,
   busy,
 }: {
+  instruments: InstrumentInfo[];
   onSubmit: (req: SubmitOrderRequest) => Promise<void>;
   busy: boolean;
 }) {
+  const [symbol, setSymbol] = useState("ACME");
   const [side, setSide] = useState<Side>("BUY");
   const [type, setType] = useState<OrderType>("LIMIT");
   const [price, setPrice] = useState("100.00");
   const [qty, setQty] = useState("5");
+
+  const tradable = instruments.length ? instruments : [{ symbol: "ACME", name: "Acme Corp" }];
 
   const priceNum = Number(price) || 0;
   const qtyNum = Number(qty) || 0;
@@ -24,7 +29,7 @@ export function OrderTicket({
 
   async function place() {
     await onSubmit({
-      symbol: "ACME",
+      symbol,
       side,
       // MARKET goes unpriced — risk derives a collared protective cap from the reference price.
       ...(market ? {} : { price: Math.round(priceNum * 100) /* ₹ → paise */ }),
@@ -35,7 +40,25 @@ export function OrderTicket({
 
   return (
     <div>
-      <p className="eyebrow mb-3">New order · ACME</p>
+      <p className="eyebrow mb-3">New order</p>
+
+      <label className="mb-3 block">
+        <span className="mb-1.5 flex justify-between text-[9px] font-bold uppercase tracking-[0.1em] text-ink3">
+          <span>Instrument</span>
+          <span>symbol</span>
+        </span>
+        <select
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          className="w-full rounded-[3px] border border-line2 bg-paper px-3 py-2.5 text-sm font-semibold outline-none focus:border-gold focus:outline-2 focus:outline-gold"
+        >
+          {tradable.map((i) => (
+            <option key={i.symbol} value={i.symbol}>
+              {i.symbol} — {i.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="mb-3 flex overflow-hidden rounded-[3px] border border-line2">
         {(["BUY", "SELL"] as const).map((s) => (
@@ -109,8 +132,8 @@ export function OrderTicket({
         {busy
           ? "Placing…"
           : market
-            ? `${buy ? "Buy" : "Sell"} ${qtyNum} ACME · at market`
-            : `${buy ? "Buy" : "Sell"} ${qtyNum} ACME · ₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+            ? `${buy ? "Buy" : "Sell"} ${qtyNum} ${symbol} · at market`
+            : `${buy ? "Buy" : "Sell"} ${qtyNum} ${symbol} · ₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
       </button>
       <p className="mt-2.5 text-center text-[11px] text-ink3">Pre-trade risk checks cash before the order rests.</p>
     </div>

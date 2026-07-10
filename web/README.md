@@ -62,9 +62,12 @@ npm run build
 - `lib/session-token.ts` — OIDC access-token rotation for the `jwt` callback
 - `lib/types.ts` — types mirroring the backend contract; money helpers
 
-## Scaffold limits (deliberate follow-ups)
+## Deliberate follow-ups
 
-- **Single symbol (ACME)** — there's no instruments endpoint yet.
-- Order **type isn't echoed** by the API response, so the blotter shows `—` for it.
-- **Roles aren't differentiated** — `ops1`/`admin1` see the same trader screen; role-aware views
-  arrive with the ops endpoints.
+The original scaffold limits (session-only blotter, single symbol, no live cash, type not
+echoed, undifferentiated roles) are all closed. Still deliberately out of scope:
+
+- **Ops cancel-on-behalf** — an audit/consent workflow, not a UI toggle (ADR-0020).
+- **ADMIN role semantics** — `admin1` has no elevated view; unassigned across the system.
+- **Reference-price staleness** — unpriced MARKET orders trust the collar, not freshness;
+  tightening waits for the feed SLO work (ADR-0021).

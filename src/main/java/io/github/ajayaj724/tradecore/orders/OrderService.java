@@ -15,10 +15,12 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Limit;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -227,6 +229,11 @@ class OrderService {
                         .query(Long.class)
                         .single()
                 > 0;
+    }
+
+    @Transactional(readOnly = true)
+    List<Order> history(String account, int limit) {
+        return orders.findByAccountOrderByIdDesc(account, Limit.of(limit));
     }
 
     @Transactional(readOnly = true)

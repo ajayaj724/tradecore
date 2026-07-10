@@ -34,5 +34,6 @@ export function createBackend(
     submit: (order: SubmitOrderRequest) => call<OrderResponse>("POST", "/api/v1/orders", order),
     cancel: (id: number) => call<OrderResponse>("POST", `/api/v1/orders/${id}/cancel`),
     get: (id: number) => call<OrderResponse>("GET", `/api/v1/orders/${id}`),
+    list: () => call<OrderResponse[]>("GET", "/api/v1/orders"),
   };
 }

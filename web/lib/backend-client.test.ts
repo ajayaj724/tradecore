@@ -39,6 +39,16 @@ describe("createBackend", () => {
     expect(getHeaders["Idempotency-Key"]).toBeUndefined();
   });
 
+  it("listsTheCurrentUsersOrders", async () => {
+    const fetchFn = fetchReturning(200, [{ id: 2 }, { id: 1 }]);
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    const result = await backend.list();
+    const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/v1/orders`);
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer user-token");
+    expect(result.data).toEqual([{ id: 2 }, { id: 1 }]);
+  });
+
   it("passesBackendStatusAndBodyThrough", async () => {
     const fetchFn = fetchReturning(422, { title: "Insufficient cash" });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

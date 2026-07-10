@@ -7,7 +7,7 @@ APP_PORT="${TRADECORE_APP_PORT:-8080}"
 KC_URL="${TRADECORE_KC_URL:-http://localhost:8081}"
 KC_REALM="tradecore"
 KC_CLIENT="tradecore-api"
-PLATFORM_PORTS=(5432 8081 4318 9090 3000)
+PLATFORM_PORTS=(5432 8081 4318 9090 3001)
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 note() { printf '==> %s\n' "$*"; }

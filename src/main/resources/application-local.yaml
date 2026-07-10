@@ -7,6 +7,9 @@
 tradecore:
   security:
     expose-prometheus-scrape: true
+    # Serve the dev console at http://localhost:8080/console.html with working action buttons
+    # (it mints demo tokens server-side). Local profile only — never a non-local concern (ADR-0026).
+    expose-local-console: true
   risk:
     # A quiet local book trades rarely; don't let the PT1H default lock out unpriced
     # MARKET orders between demo sessions (ADR-0021 staleness follow-up).

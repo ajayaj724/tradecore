@@ -68,7 +68,8 @@ npm run build
 The original scaffold limits (session-only blotter, single symbol, no live cash, type not
 echoed, undifferentiated roles) are all closed. Still deliberately out of scope:
 
-- **Ops cancel-on-behalf** — an audit/consent workflow, not a UI toggle (ADR-0020).
+- **Maker-checker (four-eyes) approval** — ops can cancel on behalf with full audit
+  attribution (ADR-0022); a second-approver workflow needs a pending-approval order state.
 - **ADMIN role semantics** — `admin1` has no elevated view; unassigned across the system.
 - **Reference-price staleness** — unpriced MARKET orders trust the collar, not freshness;
   tightening waits for the feed SLO work (ADR-0021).

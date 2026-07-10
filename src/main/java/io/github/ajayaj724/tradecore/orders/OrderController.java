@@ -50,11 +50,14 @@ class OrderController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('TRADER')")
-    ResponseEntity<OrderResponse> cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
-        String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
+    @PreAuthorize("hasAnyRole('TRADER','OPS')")
+    ResponseEntity<OrderResponse> cancel(
+            Authentication authentication, @AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        String principal = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
+        // OPS may cancel on behalf of any account (ADR-0022); the audit row names the principal.
         // 202: cancellation is accepted for async processing; the order reaches CANCELLED via event.
-        return ResponseEntity.accepted().body(OrderResponse.from(service.cancel(id, account, account)));
+        return ResponseEntity.accepted()
+                .body(OrderResponse.from(service.cancel(id, principal, principal, isOps(authentication))));
     }
 
     @GetMapping
@@ -68,8 +71,7 @@ class OrderController {
         int capped = Math.clamp(limit, 1, 200);
         List<Order> rows;
         if ("all".equals(scope)) {
-            boolean isOps = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OPS".equals(a.getAuthority()));
-            if (!isOps) {
+            if (!isOps(authentication)) {
                 throw new AccessDeniedException("scope=all requires the OPS role");
             }
             rows = service.historyAllAccounts(capped);
@@ -84,7 +86,10 @@ class OrderController {
     ResponseEntity<OrderResponse> get(
             Authentication authentication, @AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
         String account = Objects.requireNonNull(jwt.getClaimAsString("preferred_username"));
-        boolean isOps = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OPS".equals(a.getAuthority()));
-        return ResponseEntity.ok(OrderResponse.from(service.findForViewer(id, account, isOps)));
+        return ResponseEntity.ok(OrderResponse.from(service.findForViewer(id, account, isOps(authentication))));
+    }
+
+    private static boolean isOps(Authentication authentication) {
+        return authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OPS".equals(a.getAuthority()));
     }
 }

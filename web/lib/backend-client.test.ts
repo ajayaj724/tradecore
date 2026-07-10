@@ -75,6 +75,16 @@ describe("createBackend", () => {
     expect(result.data).toEqual([{ symbol: "ACME", name: "Acme Corp" }]);
   });
 
+  it("listsTheCurrentUsersPositions", async () => {
+    const position = { symbol: "ACME", quantity: 10, totalCost: 100000, markPrice: 11000, realizedPnl: 0, unrealizedPnl: 10000 };
+    const fetchFn = fetchReturning(200, [position]);
+    const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);
+    const result = await backend.positions();
+    const [url] = fetchFn.mock.calls[0] as unknown as [string];
+    expect(url).toBe(`${BASE}/api/v1/positions`);
+    expect(result.data).toEqual([position]);
+  });
+
   it("passesBackendStatusAndBodyThrough", async () => {
     const fetchFn = fetchReturning(422, { title: "Insufficient cash" });
     const backend = createBackend(BASE, async () => "user-token", fetchFn as unknown as typeof fetch);

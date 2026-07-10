@@ -1,4 +1,4 @@
-import type { CashBalance, InstrumentInfo, OrderResponse, SubmitOrderRequest } from "./types";
+import type { CashBalance, InstrumentInfo, OrderResponse, PositionInfo, SubmitOrderRequest } from "./types";
 
 // Pure backend HTTP client. The access token of the *current user* is supplied per call by
 // the injected getToken — no ambient service credential exists anywhere in the web tier.
@@ -37,5 +37,6 @@ export function createBackend(
     list: (scope?: "all") => call<OrderResponse[]>("GET", `/api/v1/orders${scope === "all" ? "?scope=all" : ""}`),
     balance: () => call<CashBalance>("GET", "/api/v1/balances"),
     instruments: () => call<InstrumentInfo[]>("GET", "/api/v1/instruments"),
+    positions: () => call<PositionInfo[]>("GET", "/api/v1/positions"),
   };
 }

@@ -28,6 +28,16 @@ export interface InstrumentInfo {
   name: string;
 }
 
+/** Mirrors the backend PositionResponse. All paise/integer; avg cost is derived for display. */
+export interface PositionInfo {
+  symbol: string;
+  quantity: number;
+  totalCost: number;
+  markPrice: number | null;
+  realizedPnl: number;
+  unrealizedPnl: number;
+}
+
 /** Mirrors the backend CashBalance. Paise; available = settled - held. */
 export interface CashBalance {
   account: string;

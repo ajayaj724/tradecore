@@ -22,6 +22,12 @@ export interface OrderResponse {
   rejectReason: string | null;
 }
 
+/** A tradable instrument from the backend's reference data. */
+export interface InstrumentInfo {
+  symbol: string;
+  name: string;
+}
+
 /** Mirrors the backend CashBalance. Paise; available = settled - held. */
 export interface CashBalance {
   account: string;

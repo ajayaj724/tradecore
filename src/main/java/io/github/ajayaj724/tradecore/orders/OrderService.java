@@ -243,6 +243,11 @@ class OrderService {
     }
 
     @Transactional(readOnly = true)
+    List<Instrument> instruments() {
+        return instruments.findAllByOrderBySymbolAsc();
+    }
+
+    @Transactional(readOnly = true)
     List<Order> history(String account, int limit) {
         return orders.findByAccountOrderByIdDesc(account, Limit.of(limit));
     }
